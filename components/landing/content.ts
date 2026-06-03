@@ -20,9 +20,42 @@ export const featureCards = [
 ];
 
 export const howItWorksSteps = [
-  { title: 'Onboard your team', text: 'Add your company details and technicians in minutes.' },
-  { title: 'Log jobs on-site', text: 'Technicians use the mobile-friendly web app to record treatments.' },
-  { title: 'Stay Compliant', text: 'Generate professional reports for the Rodenticide Stewardship Regime.' },
+  {
+    title: 'Onboard owners and technicians',
+    text: 'Business admins set up the company dashboard; field staff get secure email-code sign-in and guided help on their first logbook visit.',
+  },
+  {
+    title: 'Log jobs on-site',
+    text: 'Technicians capture treatments, photos, signatures, and follow-ups from any phone — online or offline.',
+  },
+  {
+    title: 'Stay audit-ready',
+    text: 'Export professional reports and certification records for clients and regulators, including Rodenticide Stewardship evidence.',
+  },
+];
+
+/** Shown on the landing page — product benefits (not a dev changelog). */
+export const teamRoleHighlights = [
+  {
+    role: 'Business admin',
+    audience: 'Owners & office managers',
+    points: [
+      'Full dashboard: technicians, billing, compliance settings, and PDF/CSV exports',
+      'Invite technicians and see every job in one place',
+      'Email + password sign-in built for account security',
+    ],
+    cta: { label: 'Start as business admin', href: '/auth/signup' },
+  },
+  {
+    role: 'Technician',
+    audience: 'Field operatives',
+    points: [
+      'Mobile logbook with photos, e-signatures, and room-level notes',
+      'Secure one-time email code — no shared company password on site',
+      'Step-by-step guidance when starting your first digital job record',
+    ],
+    cta: { label: 'Technician sign-in', href: '/auth/signin?role=technician' },
+  },
 ];
 
 export const pricingPlans = [
@@ -83,15 +116,32 @@ export const testimonials = [
 
 export const landingFaqs = [
   {
+    question: 'What is PestTrace pest control compliance software?',
+    answer:
+      'PestTrace is a web-based compliance logbook for pest control companies in the UK and internationally. Owners manage teams and exports from a business dashboard; technicians record jobs, photos, and signatures in the field.',
+  },
+  {
+    question: 'How do business admins and technicians sign in differently?',
+    answer:
+      'Business admins use email and password for the full company dashboard. Technicians invited by their company sign in with a one-time code sent to their email — safer for field staff and no shared passwords.',
+  },
+  {
+    question: 'Does PestTrace help with Rodenticide Stewardship and audits?',
+    answer:
+      'Yes. You can maintain structured job history, treatment details, follow-ups, and export reports suitable for client proof and regulatory audits, including stewardship-style record keeping.',
+  },
+  {
     question: 'What happens after my 7-day free trial?',
-    answer: "You'll be prompted to enter payment details. No charges until the trial ends.",
+    answer:
+      "You'll be prompted to add payment details before the trial ends. Plans start from £25/month for Pro; cancel anytime from the dashboard.",
   },
   {
     question: 'Can I cancel anytime?',
-    answer: 'Yes, you can cancel your subscription from the dashboard. No long-term contracts.',
+    answer: 'Yes. Cancel from your billing settings in the app. There are no long-term contracts.',
   },
   {
-    question: 'Do I need to download software?',
-    answer: 'No, Pest Trace works in the browser and can be installed as a PWA on mobile.',
+    question: 'Do technicians need to install an app?',
+    answer:
+      'No download required. PestTrace runs in the browser and can be installed as a PWA on phones for quick access on site.',
   },
 ];

@@ -6,13 +6,22 @@ import { motion } from 'framer-motion';
 import PWAInstallPrompt from '../components/PWAInstallPrompt';
 import LandingFooter from '../components/landing/LandingFooter';
 import SuggestionsSection from '../components/landing/SuggestionsSection';
+import LandingFAQ from '../components/landing/LandingFAQ';
 import {
   featureCards,
   pricingPlans,
   trustMicrocopy,
   regulationUrgency,
   testimonials,
+  teamRoleHighlights,
 } from '../components/landing/content';
+import {
+  buildLandingJsonLd,
+  LANDING_KEYWORDS,
+  LANDING_META_DESCRIPTION,
+  LANDING_PAGE_TITLE,
+  MARKETING_SITE_ORIGIN,
+} from '../lib/seo/landing';
 import { PRICING_TRIAL_FOOTNOTE } from '../lib/marketingPlanFeatures';
 import { buildLandingPricingFromRequest, type LandingPricingProps } from '../lib/geoCurrency';
 
@@ -115,8 +124,27 @@ export default function Home({ pricingAmountLabels, pricingFxNote }: LandingPric
   return (
     <div className="min-h-screen bg-white font-sans text-slate-900 selection:bg-emerald-100 selection:text-emerald-900">
       <Head>
-        <title>PestTrace – Pest Control Compliance Software</title>
-        <meta name="description" content="Audit-ready job tracking for pest control businesses worldwide. Track technicians in real-time, store certifications, and generate instant compliance reports." />
+        <title>{LANDING_PAGE_TITLE}</title>
+        <meta name="description" content={LANDING_META_DESCRIPTION} />
+        <meta name="keywords" content={LANDING_KEYWORDS} />
+        <link rel="canonical" href={MARKETING_SITE_ORIGIN} />
+        <meta name="robots" content="index, follow" />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content={MARKETING_SITE_ORIGIN} />
+        <meta property="og:title" content={LANDING_PAGE_TITLE} />
+        <meta property="og:description" content={LANDING_META_DESCRIPTION} />
+        <meta property="og:image" content={`${MARKETING_SITE_ORIGIN}/pest-trace.png`} />
+        <meta property="og:site_name" content="PestTrace" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={LANDING_PAGE_TITLE} />
+        <meta name="twitter:description" content={LANDING_META_DESCRIPTION} />
+        <meta name="twitter:image" content={`${MARKETING_SITE_ORIGIN}/pest-trace.png`} />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(buildLandingJsonLd()),
+          }}
+        />
       </Head>
 
       <PWAInstallPrompt />
@@ -138,7 +166,9 @@ export default function Home({ pricingAmountLabels, pricingFxNote }: LandingPric
         </Link>
         <div className="hidden md:flex space-x-10 font-medium text-slate-500">
           <a href="#features" className="hover:text-slate-900 transition">Features</a>
+          <a href="#teams" className="hover:text-slate-900 transition">For your team</a>
           <a href="#pricing" className="hover:text-slate-900 transition">Pricing</a>
+          <a href="#faq" className="hover:text-slate-900 transition">FAQ</a>
         </div>
         <div className="ml-auto flex w-full max-w-full flex-col items-stretch gap-1.5 sm:w-auto sm:max-w-none sm:items-end">
           <div className="flex w-full flex-wrap justify-end gap-2 sm:flex-nowrap">
@@ -208,6 +238,46 @@ export default function Home({ pricingAmountLabels, pricingFxNote }: LandingPric
               ))}
           </div>
         </FadeIn>
+      </section>
+
+      {/* Business vs technician */}
+      <section id="teams" className="border-y border-slate-100 bg-slate-50 py-24 px-6">
+        <div className="mx-auto max-w-6xl">
+          <FadeIn>
+            <div className="mb-14 text-center">
+              <h2 className="mb-4 text-3xl font-extrabold sm:text-5xl">Built for owners and field teams</h2>
+              <p className="mx-auto max-w-2xl text-lg text-slate-500">
+                One platform with the right access for each role — secure sign-in, guided technician onboarding, and a
+                single source of truth for compliance.
+              </p>
+            </div>
+            <div className="grid gap-8 md:grid-cols-2">
+              {teamRoleHighlights.map((block) => (
+                <article
+                  key={block.role}
+                  className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm"
+                >
+                  <p className="text-xs font-bold uppercase tracking-widest text-emerald-600">{block.audience}</p>
+                  <h3 className="mt-2 text-2xl font-bold text-slate-900">{block.role}</h3>
+                  <ul className="mt-6 space-y-3 text-slate-600">
+                    {block.points.map((point) => (
+                      <li key={point} className="flex gap-3">
+                        <span className="text-emerald-500">✓</span>
+                        <span>{point}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <Link
+                    href={block.cta.href}
+                    className="mt-8 inline-flex rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+                  >
+                    {block.cta.label}
+                  </Link>
+                </article>
+              ))}
+            </div>
+          </FadeIn>
+        </div>
       </section>
 
       {/* Features (Alternating Layout) */}
@@ -347,6 +417,8 @@ export default function Home({ pricingAmountLabels, pricingFxNote }: LandingPric
           </div>
         </FadeIn>
       </section>
+
+      <LandingFAQ />
 
       <SuggestionsSection />
 

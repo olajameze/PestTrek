@@ -16,10 +16,10 @@ export default function Document() {
 
         {/* Web App Manifest: canonical origin avoids 401 on Vercel preview (Deployment Protection). */}
         <link rel="manifest" href={getWebManifestLinkHref()} />
-        <link rel="canonical" href="https://pesttrace.com" />
-        <meta property="og:url" content="https://pesttrace.com" />
-        <meta property="og:site_name" content="Pest Trace" />
-        <meta name="twitter:url" content="https://pesttrace.com" />
+        <link rel="canonical" href="https://www.pesttrace.com" />
+        <meta property="og:url" content="https://www.pesttrace.com" />
+        <meta property="og:site_name" content="PestTrace" />
+        <meta name="twitter:url" content="https://www.pesttrace.com" />
 
         {/* Apple iOS PWA Support */}
         <meta name="apple-mobile-web-app-capable" content="yes" />
