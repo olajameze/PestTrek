@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { TECHNICIAN_EMAIL_NOT_ON_ROSTER, technicianEmailWhere } from '../../../lib/auth/technicianGate';
 import { authCallbackUrl } from '../../../lib/authRedirect';
 import { prisma } from '../../../lib/prisma';
+import { sendNewSignupNotification } from '../../../lib/email';
 import { getSupabaseAdmin } from '../../../lib/supabase-admin';
 
 function validEmail(email: string) {
@@ -25,7 +26,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
   const techRecord = await prisma.technician.findFirst({
     where: technicianEmailWhere(email),
-    select: { id: true, name: true, companyId: true },
+    select: {
+      id: true,
+      name: true,
+      companyId: true,
+      company: { select: { name: true } },
+    },
   });
   if (!techRecord) {
     return res.status(403).json({
@@ -64,6 +70,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
     return res.status(400).json({ error: created.error.message || 'Unable to create technician account.' });
+  }
+
+  try {
+    await sendNewSignupNotification({
+      email,
+      role: 'technician',
+      fullName: fullName || techRecord.name,
+      companyName: techRecord.company?.name ?? null,
+    });
+  } catch (error) {
+    console.error('New signup operator notification failed:', error);
   }
 
   return res.status(200).json({ success: true });

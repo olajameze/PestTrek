@@ -1,4 +1,4 @@
-const DEFAULT_PUBLIC_SUPPORT = 'pesttrace@gmail.com';
+const DEFAULT_PUBLIC_SUPPORT = 'compliance@pesttrace.com';
 
 const nextConfig = {
   env: {

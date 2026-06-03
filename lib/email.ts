@@ -340,6 +340,58 @@ export function getSuggestionsNotifyEmail(): string {
   return override && override.includes('@') ? override : supportEmail;
 }
 
+/** Internal inbox for new signup alerts (defaults to pesttrace@gmail.com). */
+export function getNewSignupNotifyEmail(): string {
+  const override = process.env.NEW_SIGNUP_NOTIFY_EMAIL?.trim();
+  if (override && override.includes('@')) return override;
+  return 'pesttrace@gmail.com';
+}
+
+export async function sendNewSignupNotification(params: {
+  email: string;
+  role: 'admin' | 'technician';
+  fullName?: string | null;
+  businessName?: string | null;
+  companyName?: string | null;
+}): Promise<{ id: string } | undefined> {
+  const email = params.email.trim().toLowerCase();
+  const roleLabel = params.role === 'admin' ? 'Business admin' : 'Technician';
+  const fn = params.fullName?.trim() || '(not provided)';
+  const business = params.businessName?.trim() || params.companyName?.trim() || '(not provided)';
+  const timestamp = new Date().toISOString();
+
+  const idempotencyKey = `signup-notify/${createHash('sha256')
+    .update(`${email}\n${params.role}`)
+    .digest('hex')
+    .slice(0, 48)}`;
+
+  const subject = `New Pest Trace signup: ${roleLabel}`;
+  const inner = `
+    <p><strong>New account registered</strong> on Pest Trace.</p>
+    <p><strong>Role:</strong> ${escapeHtml(roleLabel)}<br/>
+    <strong>Email:</strong> <a href="mailto:${escapeHtml(email)}">${escapeHtml(email)}</a><br/>
+    <strong>Name:</strong> ${escapeHtml(fn)}<br/>
+    <strong>Business / company:</strong> ${escapeHtml(business)}<br/>
+    <strong>Registered at (UTC):</strong> ${escapeHtml(timestamp)}</p>
+  `;
+  const text = `New Pest Trace signup
+
+Role: ${roleLabel}
+Email: ${email}
+Name: ${fn}
+Business / company: ${business}
+Registered at (UTC): ${timestamp}`;
+
+  return sendMail({
+    to: [getNewSignupNotifyEmail()],
+    subject,
+    html: brandEmailHtml(subject, inner),
+    text,
+    replyTo: email,
+    idempotencyKey,
+  });
+}
+
 /**
  * Notifies operators when someone submits a suggestion on the marketing site.
  * Idempotent per suggestion body + category + submitter fingerprint within 24h.

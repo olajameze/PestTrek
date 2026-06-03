@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { supabase } from '../../../lib/supabase';
 import { prisma } from '../../../lib/prisma';
 import { normalizeAuthEmail } from '../../../lib/auth/userSession';
-import { sendWelcomeEmail } from '../../../lib/email';
+import { sendNewSignupNotification, sendWelcomeEmail } from '../../../lib/email';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
@@ -68,9 +68,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     await sendWelcomeEmail(sessionEmail, fn ?? undefined, bn ?? undefined);
-    return res.status(200).json({ success: true });
   } catch (error) {
     console.error('Welcome email failed:', error);
     return res.status(500).json({ error: 'Failed to send welcome email' });
   }
+
+  try {
+    await sendNewSignupNotification({
+      email: sessionEmail,
+      role: 'admin',
+      fullName: fn,
+      businessName: bn,
+    });
+  } catch (error) {
+    console.error('New signup operator notification failed:', error);
+  }
+
+  return res.status(200).json({ success: true });
 }

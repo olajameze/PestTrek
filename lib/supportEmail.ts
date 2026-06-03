@@ -1,5 +1,5 @@
 /** Shared default when env vars are unset (keep in sync with lib/email.ts). */
-export const DEFAULT_SUPPORT_EMAIL = 'pesttrace@gmail.com';
+export const DEFAULT_SUPPORT_EMAIL = 'compliance@pesttrace.com';
 
 export function getServerSupportEmail(): string {
   return process.env.SUPPORT_EMAIL || DEFAULT_SUPPORT_EMAIL;

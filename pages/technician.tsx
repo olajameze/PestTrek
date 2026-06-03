@@ -1,5 +1,5 @@
 import Image from 'next/image';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { supabase } from '../lib/supabase';
@@ -10,6 +10,7 @@ import { getGraceDaysLeft, hasSubscriptionAccess } from '../lib/subscriptionAcce
 import { isValidUkPostcode } from '../lib/ukPostcode';
 import { usePermissions } from '../hooks/usePermissions';
 import { useLocale } from '../lib/hooks/useLocale';
+import OnboardingModal, { isTechnicianOnboardingDismissed } from '../components/OnboardingModal';
 
 type TechnicianProfile = {
   id: string;
@@ -258,6 +259,7 @@ export default function TechnicianPage() {
   const [certExpiryDate, setCertExpiryDate] = useState('');
   const [certUploading, setCertUploading] = useState(false);
   const [overdueBanner, setOverdueBanner] = useState<string | null>(null);
+  const [showOnboarding, setShowOnboarding] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const isDrawing = useRef(false);
   const lastDraftKeyRef = useRef('');
@@ -280,6 +282,20 @@ export default function TechnicianPage() {
 
   const currentDraftKey = profile ? `tech-draft:${profile.id}` : '';
   const templateStorageKey = profile ? `tech-templates:${profile.companyId}` : '';
+
+  const getSupabaseToken = useCallback(async (): Promise<string | null> => {
+    const { data: { session } } = await supabase.auth.getSession();
+    return session?.access_token ?? null;
+  }, []);
+
+  useEffect(() => {
+    if (loading || !profile) return;
+    if (entries.length === 0 && !isTechnicianOnboardingDismissed()) {
+      const timeout = window.setTimeout(() => setShowOnboarding(true), 0);
+      return () => window.clearTimeout(timeout);
+    }
+    return undefined;
+  }, [loading, profile, entries.length]);
 
   useEffect(() => {
     if (!currentDraftKey) return;
@@ -1485,6 +1501,11 @@ export default function TechnicianPage() {
       </div>
         </div>
       </div>
+      <OnboardingModal
+        open={showOnboarding}
+        onClose={() => setShowOnboarding(false)}
+        getSupabaseToken={getSupabaseToken}
+      />
     </div>
   );
 }
