@@ -28,6 +28,12 @@ export default function GrowthDashboard({ onOpenUserByEmail }: GrowthDashboardPr
   const [data, setData] = useState<GrowthMetrics | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [trialEmailPreview, setTrialEmailPreview] = useState<{
+    pendingCount: number;
+    alreadySentCount: number;
+  } | null>(null);
+  const [trialEmailSending, setTrialEmailSending] = useState(false);
+  const [trialEmailResult, setTrialEmailResult] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -51,9 +57,61 @@ export default function GrowthDashboard({ onOpenUserByEmail }: GrowthDashboardPr
     }
   }, [router]);
 
+  const loadTrialEmailPreview = useCallback(async () => {
+    try {
+      const res = await fetch('/api/super-admin/trial-upgrade-emails', { credentials: 'same-origin' });
+      if (!res.ok) return;
+      const body = (await res.json()) as { pendingCount?: number; alreadySentCount?: number };
+      setTrialEmailPreview({
+        pendingCount: body.pendingCount ?? 0,
+        alreadySentCount: body.alreadySentCount ?? 0,
+      });
+    } catch {
+      setTrialEmailPreview(null);
+    }
+  }, []);
+
   useEffect(() => {
     void load();
-  }, [load]);
+    void loadTrialEmailPreview();
+  }, [load, loadTrialEmailPreview]);
+
+  const sendTrialEndedEmails = async (dryRun: boolean) => {
+    if (!dryRun) {
+      const n = trialEmailPreview?.pendingCount ?? 0;
+      if (
+        !window.confirm(
+          `Send the trial-ended upgrade email to ${n} business owner(s)? Each address is only emailed once unless you use force resend from the API.`,
+        )
+      ) {
+        return;
+      }
+    }
+    setTrialEmailSending(true);
+    setTrialEmailResult('');
+    try {
+      const res = await fetch('/api/super-admin/trial-upgrade-emails', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dryRun }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error((body as { error?: string }).error || 'Send failed');
+      const sent = (body as { sent?: number }).sent ?? 0;
+      const failed = (body as { failed?: unknown[] }).failed ?? [];
+      setTrialEmailResult(
+        dryRun
+          ? `Dry run: ${(body as { eligible?: number }).eligible ?? 0} recipient(s) would be emailed.`
+          : `Sent ${sent} email(s).${failed.length ? ` ${failed.length} failed — check server logs.` : ''}`,
+      );
+      await loadTrialEmailPreview();
+    } catch (e) {
+      setTrialEmailResult(e instanceof Error ? e.message : 'Send failed');
+    } finally {
+      setTrialEmailSending(false);
+    }
+  };
 
   if (loading && !data) {
     return (
@@ -90,6 +148,38 @@ export default function GrowthDashboard({ onOpenUserByEmail }: GrowthDashboardPr
           {loading ? 'Refreshing…' : 'Refresh'}
         </Button>
       </div>
+
+      <section className="rounded-2xl border border-amber-200/80 bg-amber-50/50 p-5 shadow-sm">
+        <h3 className="text-lg font-bold text-navy">Trial ended — upgrade emails</h3>
+        <p className="mt-1 text-sm text-zinc-600">
+          Sends a respectful message to business owners whose free trial has ended and who are not on a paid
+          plan. Respects Settings → &quot;Trial expiry&quot; notifications. Each company is emailed once.
+        </p>
+        <p className="mt-2 text-sm text-zinc-700">
+          {trialEmailPreview != null
+            ? `${trialEmailPreview.pendingCount} pending · ${trialEmailPreview.alreadySentCount} already sent`
+            : 'Loading recipient count…'}
+        </p>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Button
+            variant="secondary"
+            size="sm"
+            disabled={trialEmailSending}
+            onClick={() => void sendTrialEndedEmails(true)}
+          >
+            Preview count (dry run)
+          </Button>
+          <Button
+            variant="primary"
+            size="sm"
+            disabled={trialEmailSending || (trialEmailPreview?.pendingCount ?? 0) === 0}
+            onClick={() => void sendTrialEndedEmails(false)}
+          >
+            {trialEmailSending ? 'Sending…' : 'Send upgrade emails'}
+          </Button>
+        </div>
+        {trialEmailResult ? <p className="mt-3 text-sm text-zinc-700">{trialEmailResult}</p> : null}
+      </section>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm">

@@ -291,6 +291,76 @@ The Pest Trace team`;
   });
 }
 
+/** Sent when the app-managed free trial has ended and the workspace no longer has full access. */
+export async function sendTrialEndedUpgradeEmail(params: {
+  email: string;
+  companyName?: string | null;
+  trialEndedAt?: Date | string | null;
+}): Promise<{ id: string } | undefined> {
+  const email = params.email.trim();
+  const upgradeUrl = `${appUrl}/upgrade`;
+  const signinUrl = `${appUrl}/auth/signin`;
+  const safeCompany = params.companyName?.trim() ? escapeHtml(params.companyName.trim()) : null;
+  const ended =
+    params.trialEndedAt != null
+      ? new Date(params.trialEndedAt).toLocaleDateString('en-GB', {
+          day: 'numeric',
+          month: 'long',
+          year: 'numeric',
+        })
+      : null;
+
+  const idempotencyKey = `trial-ended-upgrade/${createHash('sha256')
+    .update(email.toLowerCase())
+    .digest('hex')
+    .slice(0, 48)}`;
+
+  const inner = `
+    <p>Hi${safeCompany ? ` from <strong>${safeCompany}</strong>` : ''},</p>
+    <p>Thank you for trying Pest Trace. ${
+      ended
+        ? `Your free trial ended on <strong>${escapeHtml(ended)}</strong>.`
+        : 'Your free trial has now ended.'
+    }</p>
+    <p>We hope the platform helped your team with logbooks, compliance, and day-to-day pest control operations. To continue using Pest Trace without interruption — including your digital logbook, reports, and team access — please choose a plan that fits your business.</p>
+    <p style="text-align:center;margin:28px 0;">
+      <a href="${upgradeUrl}" style="background-color:#2F855A;color:#ffffff;padding:14px 28px;text-decoration:none;border-radius:8px;font-weight:600;font-size:16px;display:inline-block;">
+        View plans and subscribe
+      </a>
+    </p>
+    <p>Your existing data remains in your account. Once subscribed, you and your technicians can sign in as usual at <a href="${signinUrl}">${escapeHtml(signinUrl)}</a>.</p>
+    <p>If you have questions about pricing, features, or need a little more time to evaluate, we&apos;re happy to help — just reply to this email or contact us at <a href="mailto:${escapeHtml(supportEmail)}">${escapeHtml(supportEmail)}</a>.</p>
+    <p>Thank you again for giving Pest Trace a try.</p>
+    <p>Kind regards,<br />The Pest Trace team</p>
+  `;
+
+  const text = `Hi${params.companyName?.trim() ? ` (${params.companyName.trim()})` : ''},
+
+Thank you for trying Pest Trace. ${ended ? `Your free trial ended on ${ended}.` : 'Your free trial has now ended.'}
+
+We hope the platform helped your team with logbooks, compliance, and day-to-day operations. To continue using Pest Trace — including your digital logbook, reports, and team access — please choose a plan:
+
+${upgradeUrl}
+
+Your existing data remains in your account. Sign in any time at:
+${signinUrl}
+
+Questions about pricing or features? Reply to this email or contact ${supportEmail}.
+
+Thank you again for trying Pest Trace.
+
+Kind regards,
+The Pest Trace team`;
+
+  return sendMail({
+    to: [email],
+    subject: 'Your Pest Trace trial has ended — continue with a plan',
+    html: brandEmailHtml('Your trial has ended', inner),
+    text,
+    idempotencyKey,
+  });
+}
+
 /**
  * Delivers marketing/contact form submissions to the support inbox via Resend.
  * Uses an idempotency key so network retries or double-clicks do not send duplicate emails within 24 hours.
