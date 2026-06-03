@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { isSuperAdminRequest } from '../../../../lib/superAdminRequestGuard';
 import { queryIntelligenceSummary } from '../../../../lib/intelligence/queryIntelligenceSummary';
+import { queryIntelligenceIngestHealth } from '../../../../lib/intelligence/queryIntelligenceIngestHealth';
 
 function parseDate(s: string | undefined, fallback: Date): Date {
   if (!s) return fallback;
@@ -38,16 +39,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       : undefined;
 
   try {
-    const summary = await queryIntelligenceSummary({
-      dateFrom,
-      dateTo,
-      pestType,
-      infestationSeverity,
-      propertyType,
-      region,
-      treatmentOutcome,
-    });
-    return res.status(200).json(summary);
+    const [summary, ingestHealth] = await Promise.all([
+      queryIntelligenceSummary({
+        dateFrom,
+        dateTo,
+        pestType,
+        infestationSeverity,
+        propertyType,
+        region,
+        treatmentOutcome,
+      }),
+      queryIntelligenceIngestHealth(),
+    ]);
+    return res.status(200).json({ ...summary, ingestHealth });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     return res.status(500).json({

@@ -1,8 +1,14 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { getSupabaseAdmin } from '../../../lib/supabase-admin';
-import { getSuperAdminCookieName, verifySuperAdminToken } from '../../../lib/superAdminAuth';
+import {
+  clientIpFromRequest,
+  getSuperAdminCookieName,
+  verifySuperAdminToken,
+} from '../../../lib/superAdminAuth';
 import { billingRowsByNormalizedEmail, mergeUserBilling } from '../../../lib/superAdmin/billingForUserEmails';
 import type { UserBillingRow } from '../../../lib/superAdmin/billingForUserEmails';
+import { countUserRoleStats } from '../../../lib/superAdmin/countUserRoleStats';
+import { listAuthUsersForAdmin } from '../../../lib/superAdmin/listAuthUsersForAdmin';
 
 type BaseUser = {
   id: string;
@@ -24,7 +30,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   const token = req.cookies[getSuperAdminCookieName()];
-  if (!verifySuperAdminToken(token)) {
+  if (!verifySuperAdminToken(token, { ip: clientIpFromRequest(req) })) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
@@ -41,34 +47,36 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       ? Math.min(200, Math.floor(requestedPerPage))
       : 50;
 
-  const { data, error } = await admin.auth.admin.listUsers({
-    page,
-    perPage,
-  });
-  if (error) {
-    return res.status(500).json({ error: error.message });
+  const emailSearch =
+    typeof req.query.email === 'string' && req.query.email.trim() ? req.query.email.trim() : undefined;
+
+  const includeStats = req.query.stats === '1' || req.query.stats === 'true';
+
+  try {
+    const [listed, roleStats] = await Promise.all([
+      listAuthUsersForAdmin(admin, { page, perPage, emailSearch }),
+      includeStats ? countUserRoleStats(admin) : Promise.resolve(null),
+    ]);
+
+    const protectedEmail = (process.env.SUPER_ADMIN_EMAIL ?? '').trim().toLowerCase();
+    const baseUsers: BaseUser[] = listed.users.map((u) => ({
+      ...u,
+      isProtected: protectedEmail.length > 0 && u.email.trim().toLowerCase() === protectedEmail,
+    }));
+
+    const billingMap = await billingRowsByNormalizedEmail(baseUsers.map((u) => u.email));
+    const users: SafeUser[] = baseUsers.map((u) => mergeUserBilling(u, billingMap));
+
+    return res.status(200).json({
+      users,
+      page: listed.page,
+      perPage: listed.perPage,
+      total: listed.total,
+      searchActive: listed.searchActive,
+      ...(roleStats ? { roleStats } : {}),
+    });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return res.status(500).json({ error: msg });
   }
-
-  const protectedEmail = (process.env.SUPER_ADMIN_EMAIL ?? '').trim().toLowerCase();
-  const baseUsers: BaseUser[] = (data?.users ?? []).map((u) => ({
-    id: u.id,
-    email: u.email ?? '',
-    createdAt: u.created_at ?? null,
-    lastSignInAt: u.last_sign_in_at ?? null,
-    emailConfirmedAt: u.email_confirmed_at ?? null,
-    role: typeof u.user_metadata?.role === 'string' ? u.user_metadata.role : 'unknown',
-    bannedUntil: u.banned_until ?? null,
-    isProtected: protectedEmail.length > 0 && (u.email ?? '').trim().toLowerCase() === protectedEmail,
-  }));
-
-  const billingMap = await billingRowsByNormalizedEmail(baseUsers.map((u) => u.email));
-  const users: SafeUser[] = baseUsers.map((u) => mergeUserBilling(u, billingMap));
-
-  return res.status(200).json({
-    users,
-    page: data?.page ?? page,
-    perPage: data?.per_page ?? perPage,
-    total: data?.total ?? users.length,
-  });
 }
-

@@ -2,10 +2,14 @@ import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import type { GetServerSideProps } from 'next';
 import { useRouter } from 'next/router';
 import Button from '../components/ui/Button';
+import GrowthDashboard from '../components/super-admin/GrowthDashboard';
 import PestTraceIntelligencePanel from '../components/super-admin/PestTraceIntelligencePanel';
 import { getSupabaseAdmin } from '../lib/supabase-admin';
 import { getSuperAdminCookieName, verifySuperAdminToken } from '../lib/superAdminAuth';
 import { billingRowsByNormalizedEmail, mergeUserBilling } from '../lib/superAdmin/billingForUserEmails';
+import type { UserRoleStats } from '../lib/superAdmin/countUserRoleStats';
+import { countUserRoleStats } from '../lib/superAdmin/countUserRoleStats';
+import { listAuthUsersForAdmin } from '../lib/superAdmin/listAuthUsersForAdmin';
 import type { UserBillingRow } from '../lib/superAdmin/billingForUserEmails';
 import { useToast } from '../components/ui/ToastProvider';
 
@@ -77,6 +81,7 @@ export default function SuperAdminPage({
   initialPage,
   initialPerPage,
   initialTotal,
+  initialRoleStats,
 }: SuperAdminPageProps) {
   const router = useRouter();
   const { showToast } = useToast();
@@ -86,6 +91,7 @@ export default function SuperAdminPage({
   const [page, setPage] = useState(initialPage);
   const [perPage] = useState(initialPerPage);
   const [total, setTotal] = useState(initialTotal);
+  const [roleStats, setRoleStats] = useState<UserRoleStats | null>(initialRoleStats);
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState<'all' | 'admin' | 'technician' | 'unknown'>('all');
   const [actionTargetId, setActionTargetId] = useState<string | null>(null);
@@ -93,31 +99,31 @@ export default function SuperAdminPage({
   const [historyByUserId, setHistoryByUserId] = useState<Record<string, AuditEntry[]>>({});
   const [historyOpenByUserId, setHistoryOpenByUserId] = useState<Record<string, boolean>>({});
   const [historyLoadingId, setHistoryLoadingId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'users' | 'intelligence' | 'marketing'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'growth' | 'intelligence' | 'marketing'>('users');
+  const [searchActive, setSearchActive] = useState(false);
+  const [healthOk, setHealthOk] = useState<boolean | null>(null);
   const [marketingLeads, setMarketingLeads] = useState<MarketingLeadRow[]>([]);
   const [marketingLoading, setMarketingLoading] = useState(false);
   const [marketingError, setMarketingError] = useState('');
   const totalPages = Math.max(1, Math.ceil(total / perPage));
 
-  const totals = useMemo(() => {
-    const admins = users.filter((u) => u.role === 'admin').length;
-    const technicians = users.filter((u) => u.role === 'technician').length;
-    return { all: users.length, admins, technicians };
-  }, [users]);
+  const totals = roleStats ?? { total, admins: 0, technicians: 0, unknown: 0 };
 
   const visibleUsers = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return users.filter((u) => {
-      const roleMatches = roleFilter === 'all' ? true : u.role === roleFilter;
-      const searchMatches = q.length === 0 ? true : u.email.toLowerCase().includes(q);
-      return roleMatches && searchMatches;
-    });
-  }, [users, search, roleFilter]);
+    return users.filter((u) => (roleFilter === 'all' ? true : u.role === roleFilter));
+  }, [users, roleFilter]);
 
-  const loadUsers = async (requestedPage = page) => {
+  const loadUsers = useCallback(async (requestedPage = page, emailQuery = search) => {
     setLoading(true);
     setError('');
-    const response = await fetch(`/api/super-admin/users?page=${requestedPage}&perPage=${perPage}`);
+    const params = new URLSearchParams({
+      page: String(requestedPage),
+      perPage: String(perPage),
+      stats: '1',
+    });
+    const q = emailQuery.trim();
+    if (q) params.set('email', q);
+    const response = await fetch(`/api/super-admin/users?${params.toString()}`);
     if (!response.ok) {
       if (response.status === 401) {
         router.replace('/auth/super-admin');
@@ -133,8 +139,45 @@ export default function SuperAdminPage({
     setUsers(Array.isArray(body.users) ? body.users : []);
     setPage(typeof body.page === 'number' ? body.page : requestedPage);
     setTotal(typeof body.total === 'number' ? body.total : total);
+    setSearchActive(Boolean(body.searchActive));
+    if (body.roleStats && typeof body.roleStats === 'object') {
+      setRoleStats(body.roleStats as UserRoleStats);
+    }
     setLoading(false);
+  }, [page, perPage, search, total, router]);
+
+  const openUserByEmail = (email: string) => {
+    setSearch(email);
+    setActiveTab('users');
+    void loadUsers(1, email);
   };
+
+  useEffect(() => {
+    if (activeTab !== 'users') return;
+    const t = window.setTimeout(() => {
+      void loadUsers(1, search);
+    }, 350);
+    return () => window.clearTimeout(t);
+  }, [search, activeTab, loadUsers]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch('/api/super-admin/maintenance/snapshot');
+        if (!res.ok) return;
+        const body = await res.json();
+        if (!cancelled) {
+          setHealthOk(Boolean(body?.sections?.systemHealth?.ok));
+        }
+      } catch {
+        if (!cancelled) setHealthOk(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleLogout = async () => {
     await fetch('/api/super-admin/logout', { method: 'POST' });
@@ -251,6 +294,27 @@ export default function SuperAdminPage({
               <p className="mt-1 text-sm text-zinc-600">
                 Platform operations: user directory and anonymised intelligence (developer access only).
               </p>
+              {healthOk != null ? (
+                <p
+                  className={`mt-2 inline-flex items-center gap-2 rounded-lg px-3 py-1 text-xs font-semibold ${
+                    healthOk
+                      ? 'bg-emerald-50 text-emerald-800'
+                      : 'bg-amber-50 text-amber-900'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-2 w-2 rounded-full ${healthOk ? 'bg-emerald-500' : 'bg-amber-500'}`}
+                  />
+                  {healthOk ? 'System health OK' : 'Check maintenance — health issues detected'}
+                  <button
+                    type="button"
+                    className="underline"
+                    onClick={() => router.push('/super-admin/maintenance')}
+                  >
+                    Open tools
+                  </button>
+                </p>
+              ) : null}
             </div>
             <div className="flex flex-wrap gap-2">
               <Button variant="secondary" size="sm" onClick={() => void loadUsers()} disabled={loading}>
@@ -280,6 +344,17 @@ export default function SuperAdminPage({
             </button>
             <button
               type="button"
+              onClick={() => setActiveTab('growth')}
+              className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
+                activeTab === 'growth'
+                  ? 'bg-amber-700 text-white'
+                  : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-200'
+              }`}
+            >
+              Growth
+            </button>
+            <button
+              type="button"
               onClick={() => setActiveTab('intelligence')}
               className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
                 activeTab === 'intelligence'
@@ -302,6 +377,8 @@ export default function SuperAdminPage({
             </button>
           </div>
         </div>
+
+        {activeTab === 'growth' ? <GrowthDashboard onOpenUserByEmail={openUserByEmail} /> : null}
 
         {activeTab === 'intelligence' ? (
           <PestTraceIntelligencePanel />
@@ -389,7 +466,9 @@ export default function SuperAdminPage({
               <option value="unknown">Unknown</option>
             </select>
             <div className="text-sm text-zinc-600 flex items-center">
-              Showing {visibleUsers.length} of {users.length} loaded users
+              {searchActive
+                ? `Search: ${visibleUsers.length} match(es) (server-wide)`
+                : `Showing ${visibleUsers.length} on this page`}
             </div>
           </div>
           <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
@@ -418,7 +497,8 @@ export default function SuperAdminPage({
         <div className="grid gap-4 sm:grid-cols-3">
           <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm">
             <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">Total users</p>
-            <p className="mt-2 text-2xl font-bold text-navy">{totals.all}</p>
+            <p className="mt-2 text-2xl font-bold text-navy">{totals.total}</p>
+            <p className="mt-1 text-xs text-zinc-500">Platform-wide (not page slice)</p>
           </div>
           <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm">
             <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">Admins</p>
@@ -589,6 +669,7 @@ type SuperAdminPageProps = {
   initialPage: number;
   initialPerPage: number;
   initialTotal: number;
+  initialRoleStats: UserRoleStats | null;
 };
 
 export const getServerSideProps: GetServerSideProps<SuperAdminPageProps> = async (ctx) => {
@@ -611,44 +692,51 @@ export const getServerSideProps: GetServerSideProps<SuperAdminPageProps> = async
         initialPage: 1,
         initialPerPage: 50,
         initialTotal: 0,
+        initialRoleStats: null,
       },
     };
   }
 
   const page = 1;
   const perPage = 50;
-  const { data, error } = await admin.auth.admin.listUsers({
-    page,
-    perPage,
-  });
   const protectedEmail = (process.env.SUPER_ADMIN_EMAIL ?? '').trim().toLowerCase();
 
-  const baseUsers = (data?.users ?? []).map((u) => ({
-    id: u.id,
-    email: u.email ?? '',
-    createdAt: u.created_at ?? null,
-    lastSignInAt: u.last_sign_in_at ?? null,
-    emailConfirmedAt: u.email_confirmed_at ?? null,
-    role: typeof u.user_metadata?.role === 'string' ? u.user_metadata.role : 'unknown',
-    bannedUntil: u.banned_until ?? null,
-    isProtected: protectedEmail.length > 0 && (u.email ?? '').trim().toLowerCase() === protectedEmail,
-  }));
+  try {
+    const [listed, roleStats] = await Promise.all([
+      listAuthUsersForAdmin(admin, { page, perPage }),
+      countUserRoleStats(admin),
+    ]);
 
-  const billingMap = await billingRowsByNormalizedEmail(baseUsers.map((u) => u.email));
-  const users: SuperAdminUser[] = baseUsers.map((u) => mergeUserBilling(u, billingMap));
+    const baseUsers = listed.users.map((u) => ({
+      ...u,
+      isProtected: protectedEmail.length > 0 && u.email.trim().toLowerCase() === protectedEmail,
+    }));
 
-  const pageFromData = data && 'page' in data ? data.page : page;
-  const perPageFromData = data && 'per_page' in data ? data.per_page : perPage;
-  const totalFromData = data && 'total' in data ? data.total : users.length;
+    const billingMap = await billingRowsByNormalizedEmail(baseUsers.map((u) => u.email));
+    const users: SuperAdminUser[] = baseUsers.map((u) => mergeUserBilling(u, billingMap));
 
-  return {
-    props: {
-      initialUsers: users,
-      initialError: error?.message ?? '',
-      initialPage: pageFromData,
-      initialPerPage: perPageFromData,
-      initialTotal: totalFromData,
-    },
-  };
+    return {
+      props: {
+        initialUsers: users,
+        initialError: '',
+        initialPage: listed.page,
+        initialPerPage: listed.perPage,
+        initialTotal: listed.total,
+        initialRoleStats: roleStats,
+      },
+    };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : 'Failed to load users';
+    return {
+      props: {
+        initialUsers: [],
+        initialError: msg,
+        initialPage: 1,
+        initialPerPage: perPage,
+        initialTotal: 0,
+        initialRoleStats: null,
+      },
+    };
+  }
 };
 

@@ -80,8 +80,16 @@ export async function queryIntelligenceSummary(filters: IntelligenceQueryFilters
     .filter((r) => r.postcodeArea && r._count.postcodeArea >= K_ANON)
     .map((r) => ({ area: r.postcodeArea as string, count: r._count.postcodeArea }));
 
-  const redactedLowVolume =
-    postcodeGroups.filter((r) => r.postcodeArea && r._count.postcodeArea < K_ANON).length > 0;
+  const postcodeLowVolume = postcodeGroups
+    .filter((r) => r.postcodeArea && r._count.postcodeArea > 0 && r._count.postcodeArea < K_ANON)
+    .slice(0, 20)
+    .map((r) => ({
+      area: r.postcodeArea as string,
+      count: r._count.postcodeArea,
+      band: `<${K_ANON}` as const,
+    }));
+
+  const redactedLowVolume = postcodeLowVolume.length > 0;
 
   const scatter = await prisma.intelligencePestEvent.findMany({
     where: {
@@ -131,9 +139,14 @@ export async function queryIntelligenceSummary(filters: IntelligenceQueryFilters
       count: r._count.treatmentEffectiveness,
     })),
     postcodeRankings: rankedPostcodes,
+    postcodeLowVolume,
     postcodeRedactedNote: redactedLowVolume
-      ? `Areas with fewer than ${K_ANON} events are suppressed in rankings (k-anonymity).`
+      ? `Areas with fewer than ${K_ANON} events are grouped below (k-anonymity); only outward codes with ≥${K_ANON} events appear in the main ranking.`
       : null,
+    geoDisclaimer:
+      'Coordinates are approximate UK postcode centroids (outward code), not GPS fixes. Maps are indicative only — not a street-level survey.',
+    scatterCapNote:
+      'Scatter overlay is capped at 800 points per query; dense regions may be underrepresented.',
     heatmapPoints: scatter.map((p) => ({
       lat: p.geoLatRounded as number,
       lng: p.geoLngRounded as number,

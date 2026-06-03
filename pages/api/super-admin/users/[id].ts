@@ -3,7 +3,12 @@ import { writeAuditLog } from '../../../../lib/audit/log';
 import { prisma } from '../../../../lib/prisma';
 import { cancelAllSubscriptionsForStripeCustomer } from '../../../../lib/stripe/cancelCustomerSubscriptions';
 import { getSupabaseAdmin } from '../../../../lib/supabase-admin';
-import { getSuperAdminCookieName, verifySuperAdminToken } from '../../../../lib/superAdminAuth';
+import {
+  clientIpFromRequest,
+  getSuperAdminCookieName,
+  verifySuperAdminToken,
+} from '../../../../lib/superAdminAuth';
+import { syncProfileRole } from '../../../../lib/superAdmin/syncProfileRole';
 
 type ActionBody =
   | { action: 'disable' }
@@ -28,7 +33,7 @@ function parseBody(body: unknown): ActionBody | null {
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const token = req.cookies[getSuperAdminCookieName()];
-  if (!verifySuperAdminToken(token)) {
+  if (!verifySuperAdminToken(token, { ip: clientIpFromRequest(req) })) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
@@ -176,6 +181,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     user_metadata: nextMetadata,
   });
   if (error) return res.status(500).json({ error: error.message });
+
+  const profileSync = await syncProfileRole(
+    admin,
+    userId,
+    currentUser.data.user.email,
+    roleUpdate.role,
+  );
+  if (!profileSync.ok) {
+    console.warn('profiles.role sync failed after set_role', profileSync.error);
+  }
+
   await writeAuditLog({
     userId: requesterId,
     action: 'UPDATE',

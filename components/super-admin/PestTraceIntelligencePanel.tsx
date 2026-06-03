@@ -25,6 +25,8 @@ import {
 } from 'recharts';
 import { saveIntelligenceExecutivePdf } from '../../lib/intelligence/intelligenceExecutivePdf';
 import { buildGeoHeatmap, heatmapCssColor } from '../../lib/intelligence/geoHeatmap';
+import { formatPestTypeLabel, pestTypeFilterOptions } from '../../lib/intelligence/pestTypeLabels';
+import type { IntelligenceIngestHealth } from '../../lib/intelligence/queryIntelligenceIngestHealth';
 import IntelligenceGeoHeatmap from './IntelligenceGeoHeatmap';
 import Button from '../ui/Button';
 import { useToast } from '../ui/ToastProvider';
@@ -45,6 +47,10 @@ type Summary = {
   dayTrend: { day: string; count: number }[];
   monthTrend: { month: string; count: number }[];
   executive: { periodEvents: number; topPest: string | null; topPestShare: number | null };
+  postcodeLowVolume?: { area: string; count: number; band: string }[];
+  geoDisclaimer?: string | null;
+  scatterCapNote?: string | null;
+  ingestHealth?: IntelligenceIngestHealth;
 };
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
@@ -242,6 +248,11 @@ export default function PestTraceIntelligencePanel() {
     return Math.max(1, ...summary.postcodeRankings.map((r) => r.count));
   }, [summary]);
 
+  const pestFilterOptions = useMemo(() => {
+    if (!summary?.byPestType.length) return [];
+    return pestTypeFilterOptions(summary.byPestType.map((p) => p.name));
+  }, [summary]);
+
   const queryString = useMemo(() => {
     const p = new URLSearchParams();
     p.set('dateFrom', dateFrom);
@@ -362,6 +373,12 @@ export default function PestTraceIntelligencePanel() {
     if (!summary) return;
     try {
       await saveIntelligenceExecutivePdf(summary, { dateFrom, dateTo, logoPath: '/pest-trace.png' });
+      void fetch('/api/super-admin/intelligence/log-export', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ format: 'pdf', dateFrom, dateTo }),
+      });
       showToast('PDF', 'Executive report downloaded', 'success');
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'PDF export failed';
@@ -373,11 +390,17 @@ export default function PestTraceIntelligencePanel() {
 
   if (loading && !summary) {
     return (
-      <div className="flex min-h-[320px] items-center justify-center rounded-2xl border border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-900">
-        <div className="flex flex-col items-center gap-3 text-zinc-500 dark:text-zinc-400">
+      <div className="space-y-4 rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-700 dark:bg-zinc-900">
+        <div className="flex items-center gap-3 text-zinc-500 dark:text-zinc-400">
           <span className="spinner" />
           <span className="text-sm">Loading intelligence layer…</span>
         </div>
+        <div className="grid gap-3 sm:grid-cols-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-24 animate-pulse rounded-xl bg-zinc-100 dark:bg-zinc-800" />
+          ))}
+        </div>
+        <div className="h-64 animate-pulse rounded-xl bg-zinc-100 dark:bg-zinc-800" />
       </div>
     );
   }
@@ -394,11 +417,45 @@ export default function PestTraceIntelligencePanel() {
         </h2>
         <p className="mt-1 text-sm text-emerald-800/90 dark:text-emerald-200/80">
           Anonymised, aggregated telemetry derived from field reports. No client names, full
-          addresses, or technician identities are stored in this layer. Charts read from the
-          intelligence database table — use <strong>Refresh</strong> to reload;{' '}
-          <strong>Clear aggregates</strong> to drop old test-era rows;{' '}
-          <strong>Backfill</strong> to re-import from all logbooks.
+          addresses, or technician identities are stored in this layer (UK GDPR: aggregated
+          industry statistics only). Charts read from the intelligence table — use{' '}
+          <strong>Refresh</strong> to reload; <strong>Clear aggregates</strong> for test resets;{' '}
+          <strong>Backfill</strong> to re-import logbooks.
         </p>
+        {summary?.ingestHealth ? (
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="rounded-lg border border-emerald-200/60 bg-white/80 px-3 py-2 text-xs dark:border-emerald-900 dark:bg-zinc-900/60">
+              <span className="font-semibold text-emerald-900 dark:text-emerald-200">Events ingested</span>
+              <p className="mt-1 text-lg font-bold tabular-nums text-zinc-900 dark:text-white">
+                {summary.ingestHealth.totalEvents.toLocaleString()}
+              </p>
+            </div>
+            <div className="rounded-lg border border-emerald-200/60 bg-white/80 px-3 py-2 text-xs dark:border-emerald-900 dark:bg-zinc-900/60">
+              <span className="font-semibold text-emerald-900 dark:text-emerald-200">Logbooks (source)</span>
+              <p className="mt-1 text-lg font-bold tabular-nums text-zinc-900 dark:text-white">
+                {summary.ingestHealth.totalLogbooks.toLocaleString()}
+              </p>
+            </div>
+            <div className="rounded-lg border border-emerald-200/60 bg-white/80 px-3 py-2 text-xs dark:border-emerald-900 dark:bg-zinc-900/60">
+              <span className="font-semibold text-emerald-900 dark:text-emerald-200">Ingest ratio</span>
+              <p className="mt-1 text-lg font-bold tabular-nums text-zinc-900 dark:text-white">
+                {summary.ingestHealth.ingestRatioPercent != null
+                  ? `${summary.ingestHealth.ingestRatioPercent}%`
+                  : '—'}
+              </p>
+            </div>
+            <div className="rounded-lg border border-emerald-200/60 bg-white/80 px-3 py-2 text-xs dark:border-emerald-900 dark:bg-zinc-900/60">
+              <span className="font-semibold text-emerald-900 dark:text-emerald-200">Last ingest</span>
+              <p className="mt-1 font-medium text-zinc-800 dark:text-zinc-200">
+                <span suppressHydrationWarning>
+                  {summary.ingestHealth.lastIngestedAt
+                    ? new Date(summary.ingestHealth.lastIngestedAt).toLocaleString()
+                    : '—'}
+                </span>
+              </p>
+            </div>
+          </div>
+        ) : null}
         <div className="mt-4 flex flex-wrap gap-2">
           <Button variant="secondary" size="sm" onClick={() => void load()} disabled={loading}>
             {loading ? 'Refreshing…' : 'Refresh'}
@@ -452,13 +509,19 @@ export default function PestTraceIntelligencePanel() {
             />
           </label>
           <label className="block text-xs text-zinc-600 dark:text-zinc-400">
-            Pest type (normalised slug)
-            <input
+            Pest type
+            <select
               value={pestType}
               onChange={(e) => setPestType(e.target.value)}
-              className="form-input mt-1 w-full"
-              placeholder="e.g. rat_baiting"
-            />
+              className="form-select mt-1 w-full"
+            >
+              <option value="">Any pest type</option>
+              {pestFilterOptions.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
           </label>
           <label className="block text-xs text-zinc-600 dark:text-zinc-400">
             Severity
@@ -534,7 +597,9 @@ export default function PestTraceIntelligencePanel() {
                 Leading pest category
               </p>
               <p className="mt-2 text-xl font-bold leading-tight text-emerald-900 dark:text-emerald-100">
-                {summary.executive.topPest ?? '—'}
+                {summary.executive.topPest
+                  ? formatPestTypeLabel(summary.executive.topPest)
+                  : '—'}
               </p>
               <p className="mt-1 text-xs text-emerald-700/70 dark:text-emerald-400/70">
                 Highest volume pest type in period
@@ -689,6 +754,7 @@ export default function PestTraceIntelligencePanel() {
                       tick={{ fontSize: 9, fill: '#52525b' }}
                       stroke="#d4d4d8"
                       tickLine={false}
+                      tickFormatter={(v: string) => formatPestTypeLabel(String(v))}
                     />
                     <Tooltip
                       content={<ChartTooltip totalForPercent={summary.total} />}
@@ -776,6 +842,52 @@ export default function PestTraceIntelligencePanel() {
 
           {/* ── Outcome & property type ────────────────────────────────── */}
           <div className="grid gap-6 lg:grid-cols-2">
+
+            {summary.byEffectiveness.length > 0 ? (
+            <ChartCard
+              title="Treatment effectiveness"
+              subtitle="Inferred from outcome and revisit signals — heuristic, not a field survey score."
+            >
+              <div className="mt-4 h-64 w-full min-w-0">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={summary.byEffectiveness.map((r) => ({
+                      ...r,
+                      label: r.name.replace(/_/g, ' '),
+                    }))}
+                    margin={{ top: 16, right: 8, left: -12, bottom: 0 }}
+                    barCategoryGap="35%"
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e4e4e7" vertical={false} />
+                    <XAxis
+                      dataKey="label"
+                      tick={{ fontSize: 9, fill: '#71717a' }}
+                      stroke="#d4d4d8"
+                      tickLine={false}
+                      interval={0}
+                      angle={-18}
+                      textAnchor="end"
+                      height={56}
+                    />
+                    <YAxis
+                      allowDecimals={false}
+                      tick={{ fontSize: 10, fill: '#71717a' }}
+                      stroke="#d4d4d8"
+                      tickLine={false}
+                    />
+                    <Tooltip content={<ChartTooltip totalForPercent={summary.total} />} />
+                    <Bar dataKey="count" name="Events" radius={[6, 6, 0, 0]} fill="#2F855A" maxBarSize={48}>
+                      <LabelList
+                        dataKey="count"
+                        position="top"
+                        style={{ fontSize: 10, fill: '#52525b', fontWeight: 700 }}
+                      />
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </ChartCard>
+            ) : null}
 
             {/* Outcome distribution — colour-coded by outcome */}
             <ChartCard
@@ -908,8 +1020,14 @@ export default function PestTraceIntelligencePanel() {
           {/* ── Regional activity map ──────────────────────────────────── */}
           <ChartCard
             title="Regional activity map"
-            subtitle="Left: log-scaled density grid from rounded coordinates. Right: weighted point overlay. Bubble size reflects activity score."
+            subtitle="Approximate UK postcode centroids (not GPS). Left: density grid; right: scatter (capped)."
           >
+            {(summary.geoDisclaimer || summary.scatterCapNote) && (
+              <p className="mt-2 rounded-lg border border-amber-200/80 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200">
+                {summary.geoDisclaimer}
+                {summary.scatterCapNote ? ` ${summary.scatterCapNote}` : ''}
+              </p>
+            )}
             <div className="mt-4 grid gap-6 xl:grid-cols-2">
               <div className="min-w-0">
                 <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
@@ -984,6 +1102,14 @@ export default function PestTraceIntelligencePanel() {
                 {summary.postcodeRedactedNote}
               </p>
             )}
+            {(summary.postcodeLowVolume?.length ?? 0) > 0 ? (
+              <div className="mt-3 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs dark:border-zinc-700 dark:bg-zinc-800/50">
+                <p className="font-semibold text-zinc-700 dark:text-zinc-300">Low-volume areas (&lt;5 events)</p>
+                <p className="mt-1 text-zinc-600 dark:text-zinc-400">
+                  {summary.postcodeLowVolume!.map((r) => `${r.area} (${r.count})`).join(' · ')}
+                </p>
+              </div>
+            ) : null}
             <div className="mt-3 max-h-72 overflow-auto rounded-xl border border-zinc-100 dark:border-zinc-800">
               <table className="min-w-full text-left text-sm">
                 <thead className="sticky top-0 z-10 bg-zinc-100 dark:bg-zinc-800">

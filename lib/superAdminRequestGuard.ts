@@ -1,7 +1,7 @@
 import type { NextApiRequest } from 'next';
-import { getSuperAdminCookieName, verifySuperAdminToken } from './superAdminAuth';
+import { clientIpFromRequest, getSuperAdminCookieName, verifySuperAdminToken } from './superAdminAuth';
 
 export function isSuperAdminRequest(req: NextApiRequest): boolean {
   const token = req.cookies[getSuperAdminCookieName()];
-  return verifySuperAdminToken(token);
+  return verifySuperAdminToken(token, { ip: clientIpFromRequest(req) });
 }
