@@ -22,6 +22,13 @@ import {
 } from '../lib/subscriptionAccess';
 import { formatTechnicianLimit, getTechnicianLimit } from '../lib/planLimits';
 import { canUseEnterprisePreview, trialFullDaysRemaining } from '../lib/trialEnterprisePreview';
+import {
+  getTrialNoticeLevel,
+  trialNoticeMessage,
+  trialNoticeModalTitle,
+  TRIAL_NOTICE_SESSION_KEY,
+  type TrialNoticeLevel,
+} from '../lib/trial/trialNoticeThresholds';
 import { parseApiBody } from '../lib/api/parseApiBody';
 import { usePermissions } from '../hooks/usePermissions';
 
@@ -291,7 +298,7 @@ export default function Dashboard() {
   const [trialEndingUiDismissed, setTrialEndingUiDismissed] = useState(false);
   const [savingSettings, setSavingSettings] = useState(false);
   const [appError, setAppError] = useState<string | null>(null);
-  const [trialBanner, setTrialBanner] = useState<string | null>(null);
+  const [trialNoticeLevel, setTrialNoticeLevel] = useState<TrialNoticeLevel | null>(null);
   const [overdueBanner, setOverdueBanner] = useState<string | null>(null);
   const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null);
   const [selectedTechId, setSelectedTechId] = useState('');
@@ -545,14 +552,13 @@ export default function Dashboard() {
           trialExpiresAt &&
           trialExpiresAt.getTime() > now
         ) {
-          const daysLeft = Math.max(0, Math.ceil((trialExpiresAt.getTime() - now) / (1000 * 60 * 60 * 24)));
-          if (daysLeft <= 3) {
-            setTrialBanner(trialExpiresAt.toLocaleDateString());
-          } else {
-            setTrialBanner(null);
-          }
+          const daysLeft = trialFullDaysRemaining({
+            plan: subData.plan ?? 'trial',
+            trialEndsAt: trialExpiresAt,
+          });
+          setTrialNoticeLevel(getTrialNoticeLevel(daysLeft));
         } else {
-          setTrialBanner(null);
+          setTrialNoticeLevel(null);
         }
       }
 
@@ -585,20 +591,27 @@ export default function Dashboard() {
     getUser();
   }, [isPreviewMode, router, router.isReady, showToast, router.query.session_id, router.query.upgradedPlan, refreshKey]);
 
+  const activeTrialNoticeLevel = useMemo(() => {
+    if (!company || company.plan !== 'trial') return null;
+    return getTrialNoticeLevel(
+      trialFullDaysRemaining({ plan: company.plan, trialEndsAt: company.trialEndsAt ?? null }),
+    );
+  }, [company]);
+
   const showTrialEndingModal = useMemo(() => {
     if (trialEndingUiDismissed) return false;
-    if (!company || company.plan !== 'trial') return false;
-    const days = trialFullDaysRemaining({ plan: company.plan, trialEndsAt: company.trialEndsAt ?? null });
-    if (days === null || days > 2) return false;
+    if (!activeTrialNoticeLevel) return false;
     if (typeof window === 'undefined') return false;
     const today = new Date().toISOString().slice(0, 10);
     try {
+      const dismissed = sessionStorage.getItem(TRIAL_NOTICE_SESSION_KEY);
+      if (dismissed === `${today}:${activeTrialNoticeLevel}`) return false;
       if (sessionStorage.getItem('pesttraceTrialEndingModalDismissed') === today) return false;
     } catch {
       /* ignore */
     }
     return true;
-  }, [company, trialEndingUiDismissed]);
+  }, [activeTrialNoticeLevel, trialEndingUiDismissed]);
 
   const tabQuery = router.query.tab;
   const currentTab: Tab =
@@ -1090,10 +1103,10 @@ if (!user || companyLoadState === 'loading') return (
                   </div>
                 </div>
               </div>
-              {trialBanner ? (
+              {trialNoticeLevel ? (
                 <Card className="mb-6 border-blue-200 bg-blue-50">
                   <div className="flex flex-col gap-4 p-4 text-blue-900 sm:flex-row sm:items-center sm:justify-between">
-                    <div>Your current access ends on {trialBanner}. Upgrade now to retain full Pest Trace access.</div>
+                    <div>{trialNoticeMessage(trialNoticeLevel)}</div>
                     <Button variant="primary" onClick={() => router.push('/upgrade')}>
                       Upgrade now
                     </Button>
@@ -1184,28 +1197,23 @@ if (!user || companyLoadState === 'loading') return (
             onClick={(e) => e.stopPropagation()}
           >
             <h2 id="trial-ending-title" className="text-xl font-bold text-navy">
-              Your trial ends soon
+              {activeTrialNoticeLevel ? trialNoticeModalTitle(activeTrialNoticeLevel) : 'Your trial ends soon'}
             </h2>
             <p className="mt-3 text-sm text-slate-600">
-              You have{' '}
-              <strong>
-                {trialFullDaysRemaining({ plan: company.plan, trialEndsAt: company.trialEndsAt ?? null }) ?? 0}
-              </strong>{' '}
-              day
-              {(trialFullDaysRemaining({ plan: company.plan, trialEndsAt: company.trialEndsAt ?? null }) ?? 0) === 1
-                ? ''
-                : 's'}{' '}
-              left. Upgrade to keep Enterprise preview analytics, retention insights, and NPS tools after your trial.
+              {activeTrialNoticeLevel
+                ? trialNoticeMessage(activeTrialNoticeLevel)
+                : 'Upgrade to keep Enterprise preview analytics, retention insights, and NPS tools after your trial.'}
             </p>
             <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
               <Button
                 variant="secondary"
                 onClick={() => {
                   try {
-                    sessionStorage.setItem(
-                      'pesttraceTrialEndingModalDismissed',
-                      new Date().toISOString().slice(0, 10),
-                    );
+                    const today = new Date().toISOString().slice(0, 10);
+                    sessionStorage.setItem('pesttraceTrialEndingModalDismissed', today);
+                    if (activeTrialNoticeLevel) {
+                      sessionStorage.setItem(TRIAL_NOTICE_SESSION_KEY, `${today}:${activeTrialNoticeLevel}`);
+                    }
                   } catch {
                     /* ignore */
                   }
