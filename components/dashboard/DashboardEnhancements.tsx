@@ -5,6 +5,7 @@ import Card from '../ui/Card';
 import TodaySchedule from './TodaySchedule';
 import ComplianceMonitor from './ComplianceMonitor';
 import ChemicalLog from './ChemicalLog';
+import ActivationDashboard from './ActivationDashboard';
 import UrgentAlerts from './UrgentAlerts';
 import CustomerLifetimeValue from './CustomerLifetimeValue';
 import RetentionChurn from './RetentionChurn';
@@ -116,6 +117,8 @@ export default function DashboardEnhancements({ plan, enterprisePreview = false 
           </div>
         </div>
       </div>
+
+      <ActivationDashboard />
 
       <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
         <UrgentAlerts alerts={data?.urgentAlerts ?? []} loading={loading} onActionClick={handleUrgentAlertAction} />
