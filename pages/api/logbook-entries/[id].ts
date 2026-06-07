@@ -7,6 +7,10 @@ import { normalizeAuthEmail } from '../../../lib/auth/userSession';
 import { technicianEmailWhere } from '../../../lib/auth/technicianGate';
 import { deleteIntelligenceForLogbookEntry, scheduleIntelligenceIngest } from '../../../lib/intelligence/ingestLogbookEntry';
 import { getPostalCodeConfig } from '../../../lib/postalCode';
+import {
+  recordJobCompletedActivation,
+  recordLogbookActivationMilestones,
+} from '../../../lib/activation/companyActivation';
 
 type CompanyForAccess = {
   id: string;
@@ -235,6 +239,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
     scheduleIntelligenceIngest(id);
+
+    void recordLogbookActivationMilestones(prisma, company.id, {
+      clientName: updatedEntry.clientName,
+      address: updatedEntry.address,
+      postcode: updatedEntry.postcode,
+      status: updatedEntry.status,
+      photoUrl: shouldUpdatePhotos ? primaryPhotoUrl : updatedEntry.photoUrl,
+      photosCount: shouldUpdatePhotos ? normalizedPhotoUrls.length : undefined,
+    }).catch((e) => console.error('Activation milestone error:', e));
+
+    if (status && status.toLowerCase() === 'completed') {
+      void recordJobCompletedActivation(prisma, company.id).catch((e) =>
+        console.error('Activation job completed error:', e),
+      );
+    }
+
     return res.status(200).json(updatedEntry);
   }
 

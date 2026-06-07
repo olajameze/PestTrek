@@ -2,6 +2,10 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { supabase } from '../../../lib/supabase';
 import { prisma } from '../../../lib/prisma';
 import { logger } from '../../../lib/logger';
+import {
+  recordJobCompletedActivation,
+  recordLogbookActivationMilestones,
+} from '../../../lib/activation/companyActivation';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
@@ -68,9 +72,10 @@ async function handleLogbookEntry(
           return res.status(400).json({ error: 'companyId is required' });
         }
 
+        const companyId = String(data.companyId);
         const created = await prisma.logbookEntry.create({
           data: {
-            companyId: String(data.companyId),
+            companyId,
             date: typeof data.date === 'string' ? new Date(data.date) : new Date(),
             clientName: typeof data.clientName === 'string' ? data.clientName : '',
             address: typeof data.address === 'string' ? data.address : '',
@@ -85,6 +90,13 @@ async function handleLogbookEntry(
             status: typeof data.status === 'string' ? data.status : 'open',
           },
         });
+        void recordLogbookActivationMilestones(prisma, companyId, {
+          clientName: created.clientName,
+          address: created.address,
+          postcode: created.postcode,
+          status: created.status,
+          photoUrl: created.photoUrl,
+        }).catch((e) => logger.warn(`Activation milestone error: ${String(e)}`));
         return res.status(200).json(created);
       
       case 'UPDATE':
@@ -103,8 +115,19 @@ async function handleLogbookEntry(
             ...(typeof data.notes === 'string' ? { notes: data.notes } : {}),
             ...(typeof data.status === 'string' ? { status: data.status } : {}),
           },
-          
         });
+        void recordLogbookActivationMilestones(prisma, updated.companyId, {
+          clientName: updated.clientName,
+          address: updated.address,
+          postcode: updated.postcode,
+          status: updated.status,
+          photoUrl: updated.photoUrl,
+        }).catch((e) => logger.warn(`Activation milestone error: ${String(e)}`));
+        if (typeof data.status === 'string' && data.status.toLowerCase() === 'completed') {
+          void recordJobCompletedActivation(prisma, updated.companyId).catch((e) =>
+            logger.warn(`Activation job completed error: ${String(e)}`),
+          );
+        }
         return res.status(200).json(updated);
       
       case 'DELETE':

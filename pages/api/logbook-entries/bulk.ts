@@ -4,6 +4,7 @@ import { prisma } from '../../../lib/prisma';
 import { normalizeAuthEmail } from '../../../lib/auth/userSession';
 import { technicianEmailWhere } from '../../../lib/auth/technicianGate';
 import { deleteIntelligenceForLogbookEntry, scheduleIntelligenceIngest } from '../../../lib/intelligence/ingestLogbookEntry';
+import { recordJobCompletedActivation } from '../../../lib/activation/companyActivation';
 
 type BulkAction = 'set_status' | 'delete';
 
@@ -63,6 +64,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       data: { status },
     });
     scopedIds.forEach((entryId) => scheduleIntelligenceIngest(entryId));
+    if (status === 'completed') {
+      void recordJobCompletedActivation(prisma, company.id).catch((e) =>
+        console.error('Activation job completed error:', e),
+      );
+    }
     return res.status(200).json({ updated: result.count, affectedIds: scopedIds });
   }
 

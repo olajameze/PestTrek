@@ -8,6 +8,7 @@ import { normalizeAuthEmail } from '../../lib/auth/userSession';
 import { technicianEmailWhere } from '../../lib/auth/technicianGate';
 import { scheduleIntelligenceIngest } from '../../lib/intelligence/ingestLogbookEntry';
 import { getPostalCodeConfig } from '../../lib/postalCode';
+import { recordLogbookActivationMilestones } from '../../lib/activation/companyActivation';
 
 const TECH_PROPERTY_TYPES = new Set([
   'residential_house',
@@ -259,6 +260,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       };
 
       scheduleIntelligenceIngest(createdEntryId);
+
+      void recordLogbookActivationMilestones(prisma, technician.companyId, {
+        clientName: entryWithIds.clientName,
+        address: entryWithIds.address,
+        postcode: entryWithIds.postcode,
+        status: 'open',
+        photoUrl: entryWithIds.photoUrl,
+        photosCount: entryWithIds.photos.length,
+      }).catch((e) => console.error('Activation milestone error:', e));
 
       return res.status(201).json(await signEntryPhotos(entryWithIds));
     }

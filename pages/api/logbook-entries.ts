@@ -11,6 +11,7 @@ import { scheduleIntelligenceIngest } from '../../lib/intelligence/ingestLogbook
 import { normalizeAuthEmail } from '../../lib/auth/userSession';
 import { technicianEmailWhere } from '../../lib/auth/technicianGate';
 import { getPostalCodeConfig } from '../../lib/postalCode';
+import { recordLogbookActivationMilestones } from '../../lib/activation/companyActivation';
 function tryParseJson(value: unknown) {
   if (typeof value !== 'string') return value;
   try {
@@ -303,6 +304,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
 
       scheduleIntelligenceIngest(fullEntry!.id);
+
+      void recordLogbookActivationMilestones(prisma, company.id, {
+        clientName: fullEntry!.clientName,
+        address: fullEntry!.address,
+        postcode: fullEntry!.postcode,
+        status: fullEntry!.status,
+        photoUrl: fullEntry!.photoUrl,
+        photosCount: fullEntry!.photos.length,
+      }).catch((e) => logger.error(`Activation milestone error: ${String(e)}`));
 
       return res.status(201).json(await signEntryPhotos(fullEntry!));
     }

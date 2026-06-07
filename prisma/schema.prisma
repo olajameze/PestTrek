@@ -38,8 +38,25 @@ model Company {
   updatedAt               DateTime?      @default(now()) @updatedAt @map("updatedAt") @db.Timestamptz(6)
   logbookEntries          LogbookEntry[]
   technicians             Technician[]
+  activation              CompanyActivation?
 
   @@map("Company")
+  @@schema("public")
+}
+
+/// Per-company onboarding / activation milestones (trial conversion funnel).
+model CompanyActivation {
+  companyId                String    @id @map("company_id")
+  firstCustomerCreatedAt   DateTime? @map("first_customer_created_at") @db.Timestamptz(6)
+  firstSiteCreatedAt       DateTime? @map("first_site_created_at") @db.Timestamptz(6)
+  firstJobCompletedAt      DateTime? @map("first_job_completed_at") @db.Timestamptz(6)
+  firstPhotoUploadedAt     DateTime? @map("first_photo_uploaded_at") @db.Timestamptz(6)
+  firstReportGeneratedAt   DateTime? @map("first_report_generated_at") @db.Timestamptz(6)
+  checklistDismissedAt     DateTime? @map("checklist_dismissed_at") @db.Timestamptz(6)
+  updatedAt                DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  company                  Company   @relation(fields: [companyId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@map("company_activation")
   @@schema("public")
 }
 
