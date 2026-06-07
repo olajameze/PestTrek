@@ -31,6 +31,7 @@
     "@supabase/ssr": "^0.10.2",
     "@supabase/supabase-js": "^2.103.3",
     "@vercel/analytics": "^2.0.1",
+    "archiver": "^8.0.0",
     "framer-motion": "^12.38.0",
     "idb": "^8.0.3",
     "idb-keyval": "^6.2.2",
@@ -49,6 +50,7 @@
   "devDependencies": {
     "@playwright/test": "^1.59.1",
     "@tailwindcss/postcss": "^4.2.2",
+    "@types/archiver": "^8.0.0",
     "@types/node": "^20",
     "@types/pg": "^8.20.0",
     "@types/react": "^19",
