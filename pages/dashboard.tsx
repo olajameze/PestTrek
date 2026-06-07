@@ -26,6 +26,7 @@ import { parseApiBody } from '../lib/api/parseApiBody';
 import { usePermissions } from '../hooks/usePermissions';
 
 const DashboardEnhancements = dynamic(() => import('../components/dashboard/DashboardEnhancements'));
+const OnboardingChecklist = dynamic(() => import('../components/dashboard/OnboardingChecklist'));
 const OnboardingTour = dynamic(() => import('../components/onboarding/OnboardingTour'), { ssr: false });
 
 interface User {
@@ -1116,6 +1117,7 @@ if (!user || companyLoadState === 'loading') return (
               )}
               {currentTab === 'technicians' && (
               <>
+                <OnboardingChecklist />
                 <TechniciansTab 
                   technicians={technicians} 
                   plan={company.plan}
