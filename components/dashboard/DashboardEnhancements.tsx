@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 import Button from '../ui/Button';
 import Card from '../ui/Card';
 import TodaySchedule from './TodaySchedule';
+import AuditReadinessCentre from './AuditReadinessCentre';
 import ComplianceMonitor from './ComplianceMonitor';
 import ChemicalLog from './ChemicalLog';
 import ActivationDashboard from './ActivationDashboard';
@@ -152,6 +153,8 @@ export default function DashboardEnhancements({ plan, enterprisePreview = false 
         <ComplianceMonitor compliance={data?.compliance} loading={loading} onTrendClick={handleComplianceDrilldown} />
         <ChemicalLog chemicalLog={data?.chemicalLog ?? []} loading={loading} onRowClick={handleChemicalDetails} />
       </div>
+
+      <AuditReadinessCentre auditReadiness={data?.auditReadiness} loading={loading} />
 
       <details className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm" open>
         <summary className="cursor-pointer text-lg font-semibold text-navy">Customer & retention analytics</summary>
