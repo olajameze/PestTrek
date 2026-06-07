@@ -15,6 +15,7 @@ import { sendWebPushToEmails } from '../../lib/push/sendWebPush';
 import { canUseEnterprisePreview } from '../../lib/trialEnterprisePreview';
 import { normalizeAuthEmail } from '../../lib/auth/userSession';
 import { technicianEmailWhere } from '../../lib/auth/technicianGate';
+import { ensureQualificationNotifications } from '../../lib/compliance/ensureQualificationNotifications';
 
 async function resolveOwnerCompanyForUser(token: string) {
   const {
@@ -109,6 +110,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       plan: policyPlan,
       featureTier: canUseEnterprisePreview(company) ? 'enterprise' : policyPlan,
     };
+    await ensureQualificationNotifications(prisma, company.id);
     const data = await buildDashboardInsights(prisma, company.id, policy, range, {
       npsResponses: enterpriseSettings.npsResponses,
     });

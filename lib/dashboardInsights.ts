@@ -4,6 +4,9 @@ import type {
   DashboardDateRangeOption,
 } from './api/mockDashboardData';
 import { normalizeUkPostcode } from './ukPostcode';
+import { buildAuditReadinessSummary } from './compliance/auditReadiness';
+import { computeComplianceHealthScore } from './compliance/healthScore';
+import { buildQualificationUrgentAlerts } from './compliance/qualificationAlerts';
 
 const ESTIMATED_GBP_PER_VISIT = 135;
 
@@ -102,7 +105,11 @@ export async function buildDashboardInsights(
   const todayStart = startOfLocalDay(now);
   const todayEnd = endOfLocalDay(now);
 
-  const [entriesInRange, entriesToday, technicians] = await Promise.all([
+  const auditWindowStart = new Date(rangeEnd);
+  auditWindowStart.setDate(auditWindowStart.getDate() - 89);
+  auditWindowStart.setHours(0, 0, 0, 0);
+
+  const [entriesInRange, entriesToday, entriesAuditWindow, technicians] = await Promise.all([
     prisma.logbookEntry.findMany({
       where: { companyId, date: { gte: rangeStart, lte: rangeEnd } },
       include: {
@@ -118,6 +125,11 @@ export async function buildDashboardInsights(
         logbookEntryTechnicians: { include: { technician: { select: { name: true } } } },
       },
       orderBy: [{ startTime: 'asc' }, { date: 'asc' }],
+    }),
+    prisma.logbookEntry.findMany({
+      where: { companyId, date: { gte: auditWindowStart, lte: rangeEnd } },
+      include: { photos: { select: { url: true } } },
+      orderBy: { date: 'desc' },
     }),
     prisma.technician.findMany({
       where: { companyId },
@@ -245,22 +257,14 @@ const chemicalLog = [...chemicalMap.entries()]
   }));
 
 const urgentAlerts: DashboardData['urgentAlerts'] = [];
-const soon = new Date();
-soon.setDate(soon.getDate() + 30);
-for (const c of certs) {
-  if (!c.expiryDate) continue;
-  if (c.expiryDate <= soon && c.expiryDate >= now) {
-    urgentAlerts.push({
-      id: `cert-${c.id}`,
-      title: `Certification expiring: ${c.technicianName}`,
-      description: `Expires ${c.expiryDate.toLocaleDateString()}. Renew before work is blocked on audits.`,
-      severity: c.expiryDate.getTime() - now.getTime() < 7 * 86400000 ? 'high' : 'medium',
-      action: {
-        type: 'open_technicians',
-      },
-    });
-  }
-}
+const qualificationCerts = certs
+  .filter((c): c is typeof c & { expiryDate: Date } => c.expiryDate !== null)
+  .map((c) => ({
+    id: c.id,
+    technicianName: c.technicianName,
+    expiryDate: c.expiryDate,
+  }));
+urgentAlerts.push(...buildQualificationUrgentAlerts(qualificationCerts, now));
 
 for (const e of entriesInRange) {
   if (e.followUpDate && e.followUpDate < now && getStatus(e) === 'open') {
@@ -438,6 +442,14 @@ for (const e of entriesInRange) {
       ? Math.max(-100, Math.min(100, Math.round((retentionRate - 55) * 1.8)))
       : Math.round(npsTrend.reduce((sum, value) => sum + value, 0) / Math.max(1, npsTrend.length));
 
+  const complianceHealth = computeComplianceHealthScore(entriesInRange, certs, policy, now);
+  const auditSummary = buildAuditReadinessSummary(
+    entriesAuditWindow,
+    certs,
+    { requirePhotos: policy.requirePhotos, requireSignature: policy.requireSignature },
+    now,
+  );
+
   return {
     todaySchedule: {
       appointments,
@@ -450,6 +462,14 @@ for (const e of entriesInRange) {
       series,
       openActions,
       currentRate,
+      healthScore: complianceHealth.score,
+      warnings: complianceHealth.warnings,
+    },
+    auditReadiness: {
+      reportCount: auditSummary.reportCount,
+      missingSignatures: auditSummary.missingSignatures,
+      expiringQualifications: auditSummary.expiringQualifications,
+      openComplianceIssues: auditSummary.openComplianceIssues,
     },
     chemicalLog,
     urgentAlerts: urgentAlerts.slice(0, 8),

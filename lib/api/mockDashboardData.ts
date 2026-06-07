@@ -79,6 +79,20 @@ export interface CSATData {
   trend: number[];
 }
 
+export interface ComplianceHealthWarning {
+  code: string;
+  title: string;
+  count: number;
+  severity: 'high' | 'medium' | 'low';
+}
+
+export interface AuditReadinessSummary {
+  reportCount: number;
+  missingSignatures: number;
+  expiringQualifications: number;
+  openComplianceIssues: number;
+}
+
 export interface DashboardData {
   todaySchedule: {
     appointments: Appointment[];
@@ -91,7 +105,10 @@ export interface DashboardData {
     series: CompliancePoint[];
     openActions: ComplianceAction[];
     currentRate: number;
+    healthScore?: number;
+    warnings?: ComplianceHealthWarning[];
   };
+  auditReadiness?: AuditReadinessSummary;
   chemicalLog: ChemicalUsage[];
   urgentAlerts: UrgentAlert[];
   nextBestActions: NextBestAction[];

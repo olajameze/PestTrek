@@ -12,11 +12,20 @@ export interface ComplianceAction {
   dueDate: string;
 }
 
+export interface ComplianceHealthWarning {
+  code: string;
+  title: string;
+  count: number;
+  severity: 'high' | 'medium' | 'low';
+}
+
 interface ComplianceMonitorProps {
   compliance?: {
     series: CompliancePoint[];
     openActions: ComplianceAction[];
     currentRate: number;
+    healthScore?: number;
+    warnings?: ComplianceHealthWarning[];
   };
   loading: boolean;
   onTrendClick: () => void;
@@ -41,13 +50,36 @@ export default function ComplianceMonitor({ compliance, loading, onTrendClick }:
         <p className="text-sm text-slate-500">Loading compliance metrics…</p>
       ) : (
         <div className="space-y-4">
-          <div className="flex flex-col items-start gap-2 rounded-3xl border border-slate-200 bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-sm text-slate-500">Current compliance</p>
-              <p className="text-3xl font-semibold text-navy">{compliance?.currentRate ?? 0}%</p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+              <p className="text-sm text-slate-500">Compliance health score</p>
+              <p className="text-3xl font-semibold text-navy">{compliance?.healthScore ?? compliance?.currentRate ?? 0}%</p>
             </div>
-            <div className="text-sm text-slate-600 sm:text-right">Open corrective actions: {compliance?.openActions.length ?? 0}</div>
+            <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+              <p className="text-sm text-slate-500">Current compliance rate</p>
+              <p className="text-3xl font-semibold text-navy">{compliance?.currentRate ?? 0}%</p>
+              <p className="mt-1 text-sm text-slate-600">Open corrective actions: {compliance?.openActions.length ?? 0}</p>
+            </div>
           </div>
+
+          {(compliance?.warnings ?? []).length > 0 ? (
+            <div className="space-y-2">
+              <p className="text-sm font-semibold text-slate-700">Compliance warnings</p>
+              {compliance?.warnings?.slice(0, 3).map((warning) => (
+                <div
+                  key={warning.code}
+                  className={`rounded-2xl border px-4 py-3 text-sm ${
+                    warning.severity === 'high'
+                      ? 'border-red-200 bg-red-50 text-red-900'
+                      : 'border-amber-200 bg-amber-50 text-amber-900'
+                  }`}
+                >
+                  <span className="font-medium">{warning.title}</span>
+                  <span className="ml-2">({warning.count})</span>
+                </div>
+              ))}
+            </div>
+          ) : null}
 
           <div className="space-y-2">
             <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-slate-500">
