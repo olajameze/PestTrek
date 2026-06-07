@@ -38,6 +38,18 @@ export async function fetchActivation(): Promise<ActivationApiResponse> {
   return res.json() as Promise<ActivationApiResponse>;
 }
 
+export async function recordReportGenerated(): Promise<{ recorded: boolean; firstReportGeneratedAt: string }> {
+  const res = await fetch('/api/activation/report-generated', {
+    method: 'POST',
+    headers: await authHeaders(),
+  });
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(body.error || `Request failed (${res.status})`);
+  }
+  return res.json() as Promise<{ recorded: boolean; firstReportGeneratedAt: string }>;
+}
+
 export async function dismissActivationChecklist(): Promise<ActivationApiResponse> {
   const res = await fetch('/api/activation', {
     method: 'PATCH',

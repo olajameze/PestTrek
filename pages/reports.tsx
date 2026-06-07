@@ -1022,6 +1022,12 @@ export default function ReportsPage() {
     setReportGeneratedMessage(
       `Report ready with ${result.entries.length} jobs, ${result.certifications.length} certifications, and ${result.entries.reduce((count: number, entry: ReportEntry) => count + parsePhotoUrls(entry.photoUrl, entry.photoUrls, entry.photos).length, 0)} photos.`
     );
+    if (Array.isArray(result.entries) && result.entries.length > 0) {
+      void fetch('/api/activation/report-generated', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session?.access_token}` },
+      }).catch(() => undefined);
+    }
     if (plan === 'business' || plan === 'enterprise' || reportsTrialPreview) {
       await fetchAnalytics(selectedTechnician);
     } else {
@@ -1467,6 +1473,12 @@ export default function ReportsPage() {
     URL.revokeObjectURL(downloadUrl);
 
     showToast('Report downloaded', 'Your printable A4 report has been generated successfully.', 'success');
+
+    const { data: { session: pdfSession } } = await supabase.auth.getSession();
+    void fetch('/api/activation/report-generated', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${pdfSession?.access_token}` },
+    }).catch(() => undefined);
   };
 
   if (loading) {

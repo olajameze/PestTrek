@@ -129,6 +129,17 @@ export async function buildMaintenanceSnapshot(serverOrigin: string): Promise<Ma
       },
     },
     { key: 'deletion_feedback', run: () => prisma.deletionFeedback.count() },
+    { key: 'company_activation', run: () => prisma.companyActivation.count() },
+    {
+      key: 'activation_first_customer',
+      run: () =>
+        prisma.companyActivation.count({ where: { firstCustomerCreatedAt: { not: null } } }),
+    },
+    {
+      key: 'activation_first_report',
+      run: () =>
+        prisma.companyActivation.count({ where: { firstReportGeneratedAt: { not: null } } }),
+    },
     {
       key: 'audit_logs',
       run: async () => {
