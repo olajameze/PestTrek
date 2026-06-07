@@ -34,6 +34,7 @@ import { usePermissions } from '../hooks/usePermissions';
 
 const DashboardEnhancements = dynamic(() => import('../components/dashboard/DashboardEnhancements'));
 const OnboardingChecklist = dynamic(() => import('../components/dashboard/OnboardingChecklist'));
+const TrialFeedbackModal = dynamic(() => import('../components/dashboard/TrialFeedbackModal'));
 const OnboardingTour = dynamic(() => import('../components/onboarding/OnboardingTour'), { ssr: false });
 
 interface User {
@@ -299,6 +300,7 @@ export default function Dashboard() {
   const [savingSettings, setSavingSettings] = useState(false);
   const [appError, setAppError] = useState<string | null>(null);
   const [trialNoticeLevel, setTrialNoticeLevel] = useState<TrialNoticeLevel | null>(null);
+  const [showTrialFeedbackModal, setShowTrialFeedbackModal] = useState(false);
   const [overdueBanner, setOverdueBanner] = useState<string | null>(null);
   const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null);
   const [selectedTechId, setSelectedTechId] = useState('');
@@ -597,6 +599,23 @@ export default function Dashboard() {
       trialFullDaysRemaining({ plan: company.plan, trialEndsAt: company.trialEndsAt ?? null }),
     );
   }, [company]);
+
+  const maybePromptTrialFeedback = async (noticeLevel: TrialNoticeLevel | null) => {
+    if (!noticeLevel || noticeLevel > 3) return;
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch('/api/trial-feedback', {
+        headers: { Authorization: `Bearer ${session?.access_token}` },
+      });
+      if (!res.ok) return;
+      const body = (await res.json()) as { submitted?: boolean; dismissedAt?: string | null };
+      if (!body.submitted && !body.dismissedAt) {
+        setShowTrialFeedbackModal(true);
+      }
+    } catch {
+      /* non-blocking */
+    }
+  };
 
   const showTrialEndingModal = useMemo(() => {
     if (trialEndingUiDismissed) return false;
@@ -1218,6 +1237,7 @@ if (!user || companyLoadState === 'loading') return (
                     /* ignore */
                   }
                   setTrialEndingUiDismissed(true);
+                  void maybePromptTrialFeedback(activeTrialNoticeLevel);
                 }}
               >
                 Remind me tomorrow
@@ -1229,6 +1249,10 @@ if (!user || companyLoadState === 'loading') return (
           </div>
         </div>
       ) : null}
+      <TrialFeedbackModal
+        open={showTrialFeedbackModal}
+        onClose={() => setShowTrialFeedbackModal(false)}
+      />
       <ConfirmDialog
         open={Boolean(confirmRemoveId)}
         title="Remove technician?"

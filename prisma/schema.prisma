@@ -39,6 +39,7 @@ model Company {
   logbookEntries          LogbookEntry[]
   technicians             Technician[]
   activation              CompanyActivation?
+  trialUpgradeFeedback    TrialUpgradeFeedback?
 
   @@map("Company")
   @@schema("public")
@@ -267,6 +268,22 @@ model SignupMarketingLead {
 
   @@index([createdAt], map: "signup_marketing_lead_created_at_idx")
   @@map("signup_marketing_lead")
+  @@schema("public")
+}
+
+/// Owner objection captured when dismissing trial upgrade prompts.
+model TrialUpgradeFeedback {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @map("id")
+  companyId String   @unique @map("company_id")
+  userId    String   @map("user_id")
+  userEmail String?  @map("user_email")
+  reason    String   @map("reason")
+  comment   String?  @map("comment") @db.Text
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([createdAt], map: "trial_upgrade_feedback_created_at_idx")
+  @@map("trial_upgrade_feedback")
   @@schema("public")
 }
 

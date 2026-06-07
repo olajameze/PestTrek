@@ -130,6 +130,7 @@ export async function buildMaintenanceSnapshot(serverOrigin: string): Promise<Ma
     },
     { key: 'deletion_feedback', run: () => prisma.deletionFeedback.count() },
     { key: 'company_activation', run: () => prisma.companyActivation.count() },
+    { key: 'trial_upgrade_feedback', run: () => prisma.trialUpgradeFeedback.count() },
     {
       key: 'activation_first_customer',
       run: () =>
