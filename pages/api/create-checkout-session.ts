@@ -93,7 +93,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const authEmail = normalizeAuthEmail(user.email);
 
-    const { plan } = req.body as { plan?: Plan };
+    const { plan, context } = req.body as { plan?: Plan; context?: 'signup' };
     if (!plan || !(plan in PRICE_IDS)) {
       return res.status(400).json({ error: 'Invalid plan. Use "pro", "business" or "enterprise".' });
     }
@@ -208,8 +208,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    const successReturnUrl = `${origin}/reports?upgradedPlan=${selectedPlan}&session_id={CHECKOUT_SESSION_ID}`;
+    const successReturnUrl =
+      context === 'signup'
+        ? `${origin}/dashboard?session_id={CHECKOUT_SESSION_ID}`
+        : `${origin}/reports?upgradedPlan=${selectedPlan}&session_id={CHECKOUT_SESSION_ID}`;
     const directUpgradeUrl = `${origin}/reports?upgradedPlan=${selectedPlan}`;
+    const cancelReturnUrl = context === 'signup' ? `${origin}/dashboard` : `${origin}/upgrade`;
 
     const subList = await stripe.subscriptions.list({
       customer: stripeCustomerId,
@@ -301,7 +305,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       payment_method_collection: 'always',
       subscription_data: subscriptionData,
       success_url: successReturnUrl,
-      cancel_url: `${origin}/upgrade`,
+      cancel_url: cancelReturnUrl,
       client_reference_id: `${company.id}:${selectedPlan}`,
       ...(trialAlignment.shouldDeferFirstCharge && trialAlignment.trialEndsAt
         ? {

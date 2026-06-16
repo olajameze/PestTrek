@@ -19,6 +19,7 @@ import {
   formatOwnerBillingPlanLabel,
   getGraceDaysLeft,
   hasSubscriptionAccess,
+  needsSignupCheckout,
 } from '../lib/subscriptionAccess';
 import { formatTechnicianLimit, getTechnicianLimit } from '../lib/planLimits';
 import { canUseEnterprisePreview, trialFullDaysRemaining } from '../lib/trialEnterprisePreview';
@@ -30,7 +31,9 @@ import {
   type TrialNoticeLevel,
 } from '../lib/trial/trialNoticeThresholds';
 import { parseApiBody } from '../lib/api/parseApiBody';
+import { startSignupCheckout, formatTrialChargeDate } from '../lib/stripe/signupCheckout';
 import { usePermissions } from '../hooks/usePermissions';
+import { isCompanyOwnerSession } from '../lib/auth/resolveWorkspaceRoute';
 
 const DashboardEnhancements = dynamic(() => import('../components/dashboard/DashboardEnhancements'));
 const OnboardingChecklist = dynamic(() => import('../components/dashboard/OnboardingChecklist'));
@@ -284,6 +287,7 @@ const PlanModal = ({
 );
 
 // ========== Dashboard Component ==========
+
 export default function Dashboard() {
   const [user, setUser] = useState<User | null>(null);
   const [company, setCompany] = useState<Company | null>(null);
@@ -319,6 +323,53 @@ export default function Dashboard() {
   const isPro = company
     ? checkPlan(company.plan ?? 'trial', ['pro', 'business', 'enterprise']) || company.subscriptionStatus === 'active'
     : false;
+
+  const signupCheckoutNeeded = useMemo(() => {
+    if (isPreviewMode) return false;
+
+    const snapshot = subscription
+      ? {
+          plan: subscription.plan,
+          subscriptionStatus: subscription.status,
+          trialEndsAt: subscription.trialEndsAt,
+          paymentGraceEndsAt: subscription.paymentGraceEndsAt,
+        }
+      : company
+        ? {
+            plan: company.plan,
+            subscriptionStatus: company.subscriptionStatus,
+            trialEndsAt: company.trialEndsAt,
+          }
+        : null;
+
+    if (!snapshot) return false;
+    return needsSignupCheckout(snapshot);
+  }, [isPreviewMode, subscription, company]);
+
+  const handleSignupCheckout = async () => {
+    if (isPreviewMode) {
+      showToast('Preview mode', 'Checkout is disabled in preview mode.', 'info');
+      return;
+    }
+    setLoadingCheckout(true);
+    setAppError(null);
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session) {
+      setLoadingCheckout(false);
+      router.push('/auth/signin');
+      return;
+    }
+    const result = await startSignupCheckout(session.access_token);
+    if (result.ok) {
+      window.location.href = result.url;
+      return;
+    }
+    setAppError(result.error);
+    showToast('Checkout failed', result.error, 'error');
+    setLoadingCheckout(false);
+  };
 
   const handleAccountDeleted = async () => {
     await supabase.auth.signOut();
@@ -470,18 +521,8 @@ export default function Dashboard() {
         return;
       }
 
-      const technicianProfileRes = await fetch('/api/technician-profile', {
-        headers: { Authorization: `Bearer ${session.access_token}` },
-      });
-      if (technicianProfileRes.ok) {
-        const rolePayload: { technician?: unknown } = await technicianProfileRes.json().catch(() => ({}));
-        if (rolePayload.technician) {
-          router.replace('/technician');
-          return;
-        }
-      }
-
       setUser(session.user);
+
       const companyPromise = fetch('/api/company', {
         headers: { Authorization: `Bearer ${session.access_token}` },
       });
@@ -489,6 +530,9 @@ export default function Dashboard() {
         headers: { Authorization: `Bearer ${session.access_token}` },
       });
       const subscriptionPromise = fetch('/api/subscription', {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      const technicianProfilePromise = fetch('/api/technician-profile', {
         headers: { Authorization: `Bearer ${session.access_token}` },
       });
 
@@ -500,6 +544,19 @@ export default function Dashboard() {
         setCompanyLoadState('error');
         return;
       }
+
+      const isOwner = isCompanyOwnerSession(session.user.email, companyData);
+      if (!isOwner) {
+        const technicianProfileRes = await technicianProfilePromise;
+        if (technicianProfileRes.ok) {
+          const rolePayload: { technician?: unknown } = await technicianProfileRes.json().catch(() => ({}));
+          if (rolePayload.technician) {
+            router.replace('/technician');
+            return;
+          }
+        }
+      }
+
       if (!companyData) {
         setCompanyLoadState('missing');
         return;
@@ -536,8 +593,16 @@ export default function Dashboard() {
         );
 
         if (!hasAccess) {
-          router.replace('/upgrade');
-          return;
+          const checkoutNeeded = needsSignupCheckout({
+            plan: subData.plan,
+            subscriptionStatus: subData.status,
+            trialEndsAt: subData.trialEndsAt,
+            paymentGraceEndsAt: subData.paymentGraceEndsAt,
+          });
+          if (!checkoutNeeded) {
+            router.replace('/upgrade');
+            return;
+          }
         }
 
         if (graceDaysLeft !== null && subData.status !== 'active') {
@@ -618,6 +683,7 @@ export default function Dashboard() {
   };
 
   const showTrialEndingModal = useMemo(() => {
+    if (signupCheckoutNeeded) return false;
     if (trialEndingUiDismissed) return false;
     if (!activeTrialNoticeLevel) return false;
     if (typeof window === 'undefined') return false;
@@ -630,7 +696,7 @@ export default function Dashboard() {
       /* ignore */
     }
     return true;
-  }, [activeTrialNoticeLevel, trialEndingUiDismissed]);
+  }, [activeTrialNoticeLevel, signupCheckoutNeeded, trialEndingUiDismissed]);
 
   const tabQuery = router.query.tab;
   const currentTab: Tab =
@@ -1078,6 +1144,15 @@ if (!user || companyLoadState === 'loading') return (
                 </div>
               </Card>
             ) : company ? (
+              signupCheckoutNeeded ? (
+                <SignupCheckoutGate
+                  trialEndsAt={subscription?.trialEndsAt ?? company.trialEndsAt ?? null}
+                  loading={loadingCheckout}
+                  onCheckout={() => {
+                    void handleSignupCheckout();
+                  }}
+                />
+              ) : (
               <>
                 <div className="mb-6 rounded-2xl border border-zinc-200 bg-white px-6 py-5 shadow-sm">
                   <h1 className="text-4xl font-bold text-navy">
@@ -1193,6 +1268,7 @@ if (!user || companyLoadState === 'loading') return (
                 />
               )}
             </>
+              )
           ) : companyLoadState === 'missing' ? (
             <CompanySetupTab />
           ) : null}
@@ -1423,13 +1499,20 @@ function CompanySetupTab() {
       },
       body: JSON.stringify({ name }),
     });
-    if (res.ok) {
-      window.location.reload();
-    } else {
+    if (!res.ok) {
       const err = await res.json().catch(() => ({ error: 'Error creating company' }));
       showToast('Setup failed', err.error || 'Error creating company', 'error');
+      setLoading(false);
+      return;
     }
-    setLoading(false);
+
+    const checkout = await startSignupCheckout(token);
+    if (checkout.ok) {
+      window.location.href = checkout.url;
+      return;
+    }
+    showToast('Checkout failed', checkout.error, 'error');
+    window.location.reload();
   };
 
   return (
@@ -1438,7 +1521,9 @@ function CompanySetupTab() {
         <div className="text-center mb-6">
           <h2 className="text-2xl font-bold text-navy mb-3">Welcome to Pest Trace!</h2>
           <div className="mx-auto h-1 w-12 bg-primary-500 rounded-full mb-4"></div>
-          <p className="text-zinc-600">Let&apos;s set up your pest control company to get started.</p>
+          <p className="text-zinc-600">
+            Set up your company, then add a card to start your free trial. You won&apos;t be charged until the trial ends.
+          </p>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <FormInput
@@ -1450,9 +1535,42 @@ function CompanySetupTab() {
             required
           />
           <Button type="submit" disabled={loading} size="lg">
-            {loading ? 'Creating...' : 'Create Company'}
+            {loading ? 'Continuing…' : 'Continue to secure checkout'}
           </Button>
         </form>
+      </Card>
+    </div>
+  );
+}
+
+function SignupCheckoutGate({
+  trialEndsAt,
+  loading,
+  onCheckout,
+}: {
+  trialEndsAt: string | null;
+  loading: boolean;
+  onCheckout: () => void;
+}) {
+  const trialEndLabel = formatTrialChargeDate(trialEndsAt);
+
+  return (
+    <div className="mx-auto max-w-lg" data-testid="signup-checkout-gate">
+      <Card>
+        <div className="space-y-4 p-2 text-center">
+          <h2 className="text-2xl font-bold text-navy">Add your card to start your trial</h2>
+          <p className="text-sm text-zinc-600">
+            A card is required to activate your Pest Trace Pro trial. Your card will be saved securely
+            {trialEndLabel ? (
+              <> and you won&apos;t be charged until {trialEndLabel}.</>
+            ) : (
+              <> and you won&apos;t be charged until your free trial ends.</>
+            )}
+          </p>
+          <Button type="button" size="lg" disabled={loading} onClick={onCheckout}>
+            {loading ? 'Redirecting…' : 'Continue to secure checkout'}
+          </Button>
+        </div>
       </Card>
     </div>
   );

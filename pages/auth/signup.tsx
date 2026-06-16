@@ -254,7 +254,7 @@ export default function SignUp({ initialRole, initialInviteEmail }: SignUpPagePr
       subtitle={
         isTechnicianSignup
           ? 'Use the same email your admin added in the Technicians tab.'
-          : 'No credit card required. Get started in 2 minutes.'
+          : 'Add a card to start your 7-day Pro trial. You won\'t be charged until the trial ends.'
       }
     >
       {isTechnicianSignup ? (

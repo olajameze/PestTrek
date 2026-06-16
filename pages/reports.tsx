@@ -8,6 +8,7 @@ import Card from '../components/ui/Card';
 import FormInput from '../components/ui/FormInput';
 import { useToast } from '../components/ui/ToastProvider';
 import { getGraceDaysLeft, hasSubscriptionAccess } from '../lib/subscriptionAccess';
+import { isCompanyOwnerSession } from '../lib/auth/resolveWorkspaceRoute';
 import { isActiveTrial } from '../lib/trialEnterprisePreview';
 import IntelligenceGeoHeatmap from '../components/super-admin/IntelligenceGeoHeatmap';
 import { buildHeatmapPointsFromReportEntries } from '../lib/intelligence/ukPostcodeGeo';
@@ -446,9 +447,70 @@ export default function ReportsPage() {
         return;
       }
 
-      const technicianProfileRes = await fetch('/api/technician-profile', {
-        headers: { Authorization: `Bearer ${session.access_token}` },
-      });
+      const authHeaders = { Authorization: `Bearer ${session.access_token}` };
+
+      const companyRes = await fetch('/api/company', { headers: authHeaders });
+      const companyData = companyRes.ok ? await companyRes.json().catch(() => null) : null;
+
+      if (isCompanyOwnerSession(session.user.email, companyData)) {
+        setCompany(companyData);
+
+        const subRes = await fetch('/api/subscription', { headers: authHeaders });
+        if (subRes.ok) {
+          const subData = await subRes.json();
+          const queryPlan = typeof router.query.upgradedPlan === 'string' ? router.query.upgradedPlan : undefined;
+          setPlan(
+            queryPlan && (queryPlan === 'pro' || queryPlan === 'business' || queryPlan === 'enterprise')
+              ? queryPlan
+              : subData.plan || 'trial',
+          );
+          setTrialEndsAt(subData.trialEndsAt ? String(subData.trialEndsAt) : null);
+          if (
+            !hasSubscriptionAccess({
+              plan: subData.plan,
+              subscriptionStatus: subData.status,
+              trialEndsAt: subData.trialEndsAt,
+              paymentGraceEndsAt: subData.paymentGraceEndsAt,
+            })
+          ) {
+            router.replace('/upgrade');
+            return;
+          }
+          const daysLeft = getGraceDaysLeft({ paymentGraceEndsAt: subData.paymentGraceEndsAt });
+          setOverdueBanner(
+            daysLeft !== null
+              ? `Payment is overdue. You have ${daysLeft} day${daysLeft === 1 ? '' : 's'} remaining before service interruption.`
+              : null,
+          );
+        } else {
+          const queryPlan = typeof router.query.upgradedPlan === 'string' ? router.query.upgradedPlan : undefined;
+          if (queryPlan && (queryPlan === 'pro' || queryPlan === 'business' || queryPlan === 'enterprise')) {
+            setPlan(queryPlan);
+          }
+          setTrialEndsAt(companyData.trialEndsAt ? String(companyData.trialEndsAt) : null);
+        }
+
+        const techRes = await fetch('/api/technicians', { headers: authHeaders });
+        const techData: unknown = await techRes.json().catch(() => null);
+        const techList = Array.isArray(techData) ? techData : [];
+        setTechnicians(techList);
+        setSelectedTechnician(techList[0]?.id ?? '');
+        if (!techRes.ok) {
+          const msg =
+            techData &&
+            typeof techData === 'object' &&
+            'error' in techData &&
+            typeof (techData as { error?: string }).error === 'string'
+              ? (techData as { error: string }).error
+              : 'Unable to load technicians.';
+          showToast('Load failed', msg, 'error');
+        }
+        setIsOwner(true);
+        setLoading(false);
+        return;
+      }
+
+      const technicianProfileRes = await fetch('/api/technician-profile', { headers: authHeaders });
       if (technicianProfileRes.ok) {
         const techData = await technicianProfileRes.json();
         if (techData.technician) {
@@ -457,9 +519,7 @@ export default function ReportsPage() {
             name: techData.technician.companyName,
             email: techData.technician.companyId,
           });
-          const subRes = await fetch('/api/subscription', {
-            headers: { Authorization: `Bearer ${session.access_token}` },
-          });
+          const subRes = await fetch('/api/subscription', { headers: authHeaders });
           if (subRes.ok) {
             const subData = await subRes.json();
             const queryPlan = typeof router.query.upgradedPlan === 'string' ? router.query.upgradedPlan : undefined;
@@ -497,76 +557,6 @@ export default function ReportsPage() {
           ]);
           setSelectedTechnician(techData.technician.id);
           setIsOwner(false);
-          setLoading(false);
-          return;
-        }
-      }
-
-      // Business owner path
-      const companyRes = await fetch('/api/company', {
-        headers: { Authorization: `Bearer ${session.access_token}` },
-      });
-
-      if (companyRes.ok) {
-        const companyData = await companyRes.json();
-        if (companyData) {
-          setCompany(companyData);
-
-          const subRes = await fetch('/api/subscription', {
-            headers: { Authorization: `Bearer ${session.access_token}` },
-          });
-          if (subRes.ok) {
-            const subData = await subRes.json();
-            const queryPlan = typeof router.query.upgradedPlan === 'string' ? router.query.upgradedPlan : undefined;
-            setPlan(
-              queryPlan && (queryPlan === 'pro' || queryPlan === 'business' || queryPlan === 'enterprise')
-                ? queryPlan
-                : subData.plan || 'trial',
-            );
-            setTrialEndsAt(subData.trialEndsAt ? String(subData.trialEndsAt) : null);
-            if (
-              !hasSubscriptionAccess({
-                plan: subData.plan,
-                subscriptionStatus: subData.status,
-                trialEndsAt: subData.trialEndsAt,
-                paymentGraceEndsAt: subData.paymentGraceEndsAt,
-              })
-            ) {
-              router.replace('/upgrade');
-              return;
-            }
-            const daysLeft = getGraceDaysLeft({ paymentGraceEndsAt: subData.paymentGraceEndsAt });
-            setOverdueBanner(
-              daysLeft !== null
-                ? `Payment is overdue. You have ${daysLeft} day${daysLeft === 1 ? '' : 's'} remaining before service interruption.`
-                : null,
-            );
-          } else {
-            const queryPlan = typeof router.query.upgradedPlan === 'string' ? router.query.upgradedPlan : undefined;
-            if (queryPlan && (queryPlan === 'pro' || queryPlan === 'business' || queryPlan === 'enterprise')) {
-              setPlan(queryPlan);
-            }
-            setTrialEndsAt(companyData.trialEndsAt ? String(companyData.trialEndsAt) : null);
-          }
-
-          const techRes = await fetch('/api/technicians', {
-            headers: { Authorization: `Bearer ${session.access_token}` },
-          });
-          const techData: unknown = await techRes.json().catch(() => null);
-          const techList = Array.isArray(techData) ? techData : [];
-          setTechnicians(techList);
-          setSelectedTechnician(techList[0]?.id ?? '');
-          if (!techRes.ok) {
-            const msg =
-              techData &&
-              typeof techData === 'object' &&
-              'error' in techData &&
-              typeof (techData as { error?: string }).error === 'string'
-                ? (techData as { error: string }).error
-                : 'Unable to load technicians.';
-            showToast('Load failed', msg, 'error');
-          }
-          setIsOwner(true);
           setLoading(false);
           return;
         }

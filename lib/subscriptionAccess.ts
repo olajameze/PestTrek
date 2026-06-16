@@ -1,6 +1,6 @@
 import { checkPlan } from './planGuard';
 
-type AccessSnapshot = {
+export type AccessSnapshot = {
   plan?: string | null;
   subscriptionStatus?: string | null;
   trialEndsAt?: string | Date | null;
@@ -36,13 +36,17 @@ export function hasSubscriptionAccess(snapshot: AccessSnapshot, nowMs = Date.now
     return true;
   }
 
-  const trialEndMs = parseTrialEnd(snapshot.trialEndsAt);
-  if (trialEndMs !== null && trialEndMs > nowMs) {
-    return true;
-  }
-
   const graceEndMs = parseTrialEnd(snapshot.paymentGraceEndsAt);
   return graceEndMs !== null && graceEndMs > nowMs;
+}
+
+/** True when trial is still active but signup checkout (Stripe subscription) is not complete. */
+export function needsSignupCheckout(snapshot: AccessSnapshot, nowMs = Date.now()): boolean {
+  const trialEndMs = parseTrialEnd(snapshot.trialEndsAt);
+  if (trialEndMs === null || trialEndMs <= nowMs) {
+    return false;
+  }
+  return !hasSubscriptionAccess(snapshot, nowMs);
 }
 
 /** Billing badge: paid tier when Stripe shows an active-ish billing lifecycle. */

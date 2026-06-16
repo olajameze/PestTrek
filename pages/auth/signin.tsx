@@ -9,6 +9,7 @@ import FormInput from '../../components/ui/FormInput';
 import PasswordField from '../../components/ui/PasswordField';
 import { useToast } from '../../components/ui/ToastProvider';
 import { authCallbackUrl } from '../../lib/authRedirect';
+import { resolveBusinessSignInRoute } from '../../lib/auth/resolveWorkspaceRoute';
 
 export type SignInPageProps = {
   initialRole: 'admin' | 'technician';
@@ -114,18 +115,16 @@ export default function SignIn({ initialRole, initialInviteEmail }: SignInPagePr
         return;
       }
       if (data.session.access_token) {
-        const techCheck = await fetch('/api/technician-profile', {
-          headers: { Authorization: `Bearer ${data.session.access_token}` },
-        });
-        if (techCheck.ok) {
-          const techPayload = await techCheck.json().catch(() => null) as { technician?: unknown } | null;
-          if (techPayload?.technician) {
-            setSuccessMessage('Signed in successfully. Redirecting to technician workspace...');
-            showToast('Signed in', 'Redirecting to technician workspace', 'success');
-            setLoading(false);
-            await router.push('/technician');
-            return;
-          }
+        const destination = await resolveBusinessSignInRoute(
+          data.session.access_token,
+          data.session.user.email,
+        );
+        if (destination === '/technician') {
+          setSuccessMessage('Signed in successfully. Redirecting to technician workspace...');
+          showToast('Signed in', 'Redirecting to technician workspace', 'success');
+          setLoading(false);
+          await router.push('/technician');
+          return;
         }
       }
       setSuccessMessage('Signed in successfully. Redirecting to dashboard...');
