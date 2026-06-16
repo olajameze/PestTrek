@@ -7,6 +7,7 @@ import { normalizeUkPostcode } from './ukPostcode';
 import { buildAuditReadinessSummary } from './compliance/auditReadiness';
 import { computeComplianceHealthScore } from './compliance/healthScore';
 import { buildQualificationUrgentAlerts } from './compliance/qualificationAlerts';
+import { buildFollowUpQueue } from './followUpQueue';
 
 const ESTIMATED_GBP_PER_VISIT = 135;
 
@@ -109,7 +110,7 @@ export async function buildDashboardInsights(
   auditWindowStart.setDate(auditWindowStart.getDate() - 89);
   auditWindowStart.setHours(0, 0, 0, 0);
 
-  const [entriesInRange, entriesToday, entriesAuditWindow, technicians] = await Promise.all([
+  const [entriesInRange, entriesToday, entriesAuditWindow, technicians, followUpCandidates] = await Promise.all([
     prisma.logbookEntry.findMany({
       where: { companyId, date: { gte: rangeStart, lte: rangeEnd } },
       include: {
@@ -136,6 +137,22 @@ export async function buildDashboardInsights(
       include: {
         certifications: { select: { id: true, expiryDate: true } },
       },
+    }),
+    prisma.logbookEntry.findMany({
+      where: {
+        companyId,
+        OR: [{ status: null }, { status: { equals: 'open', mode: 'insensitive' } }],
+      },
+      select: {
+        id: true,
+        clientName: true,
+        address: true,
+        treatment: true,
+        followUpDate: true,
+        notes: true,
+        status: true,
+      },
+      orderBy: { followUpDate: 'asc' },
     }),
   ]);
 
@@ -449,6 +466,7 @@ for (const e of entriesInRange) {
     { requirePhotos: policy.requirePhotos, requireSignature: policy.requireSignature },
     now,
   );
+  const followUpQueue = buildFollowUpQueue(followUpCandidates, now.getTime());
 
   return {
     todaySchedule: {
@@ -473,6 +491,7 @@ for (const e of entriesInRange) {
     },
     chemicalLog,
     urgentAlerts: urgentAlerts.slice(0, 8),
+    followUpQueue,
     nextBestActions: nextBestActions.slice(0, 4),
     customerValue: {
       clv: clvPerClient,

@@ -9,11 +9,20 @@ interface SidebarProps {
   onTabChange?: (tab: string) => void;
   onSignOut?: () => void;
   role?: 'owner' | 'technician';
+  /** Shown under Compliance Suite — defaults from role when omitted. */
+  workspaceLabel?: string;
   /** When true (dev preview mode) appends &preview=1 to all internal nav links. */
   previewMode?: boolean;
 }
 
-export default function Sidebar({ activeTab = 'technicians', onTabChange, onSignOut, role = 'owner', previewMode = false }: SidebarProps) {
+export default function Sidebar({
+  activeTab = 'technicians',
+  onTabChange,
+  onSignOut,
+  role = 'owner',
+  workspaceLabel,
+  previewMode = false,
+}: SidebarProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const mobileNavRef = useRef<HTMLElement>(null);
 
@@ -40,6 +49,8 @@ export default function Sidebar({ activeTab = 'technicians', onTabChange, onSign
     { id: 'reports', label: 'Reports', href: `/reports${previewMode ? '?preview=1' : ''}`, icon: ReportsIcon },
   ];
   const tabs = role === 'technician' ? technicianTabs : ownerTabs;
+  const resolvedWorkspaceLabel =
+    workspaceLabel ?? (role === 'technician' ? 'Technician' : 'Business admin');
 
   const isActive = (id: string) => activeTab === id;
 
@@ -83,6 +94,9 @@ export default function Sidebar({ activeTab = 'technicians', onTabChange, onSign
                   <h2 className="truncate text-2xl font-semibold leading-tight text-navy">Pest Trace</h2>
               </div>
               <p className="mt-1 text-sm text-zinc-500">Compliance Suite</p>
+              <span className="mt-2 inline-flex rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs font-medium text-zinc-600">
+                {resolvedWorkspaceLabel}
+              </span>
               <button
                 onClick={() => setMobileOpen(false)}
                 className="mt-3 rounded-lg p-2 hover:bg-zinc-100 lg:hidden"

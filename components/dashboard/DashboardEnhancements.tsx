@@ -8,6 +8,7 @@ import ComplianceMonitor from './ComplianceMonitor';
 import ChemicalLog from './ChemicalLog';
 import ActivationDashboard from './ActivationDashboard';
 import UrgentAlerts from './UrgentAlerts';
+import FollowUpQueue from './FollowUpQueue';
 import CustomerLifetimeValue from './CustomerLifetimeValue';
 import RetentionChurn from './RetentionChurn';
 import CSATScore from './CSATScore';
@@ -16,6 +17,7 @@ import { useDateRange } from '../../lib/hooks/useDateRange';
 import { useDashboardData } from '../../lib/hooks/useDashboardData';
 import { useToast } from '../ui/ToastProvider';
 import type { NextBestAction } from '../../lib/api/mockDashboardData';
+import type { FollowUpQueueItem } from '../../lib/followUpQueue';
 
 interface DashboardEnhancementsProps {
   plan?: string;
@@ -87,6 +89,14 @@ export default function DashboardEnhancements({ plan, enterprisePreview = false 
     openReports({});
   };
 
+  const handleFollowUpEntry = (item: FollowUpQueueItem) => {
+    openReports({ followUpOnly: '1', search: item.clientName });
+  };
+
+  const handleFollowUpViewAll = () => {
+    openReports({ followUpOnly: '1' });
+  };
+
   return (
     <section aria-labelledby="dashboard-enhancements-heading" className="space-y-6">
       <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
@@ -120,6 +130,13 @@ export default function DashboardEnhancements({ plan, enterprisePreview = false 
       </div>
 
       <ActivationDashboard />
+
+      <FollowUpQueue
+        queue={data?.followUpQueue}
+        loading={loading}
+        onOpenEntry={handleFollowUpEntry}
+        onViewAll={handleFollowUpViewAll}
+      />
 
       <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
         <UrgentAlerts alerts={data?.urgentAlerts ?? []} loading={loading} onActionClick={handleUrgentAlertAction} />

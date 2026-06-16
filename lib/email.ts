@@ -361,6 +361,57 @@ The Pest Trace team`;
   });
 }
 
+/** One-time nudge when signup Stripe checkout was abandoned during an active trial. */
+export async function sendAbandonedSignupCheckoutEmail(params: {
+  email: string;
+  companyName?: string | null;
+  dashboardUrl: string;
+  companyId: string;
+}): Promise<{ id: string } | undefined> {
+  const email = params.email.trim();
+  const dashboardUrl = params.dashboardUrl.trim();
+  const safeCompany = params.companyName?.trim() ? escapeHtml(params.companyName.trim()) : null;
+
+  const idempotencyKey = `signup-checkout-reminder/${createHash('sha256')
+    .update(params.companyId)
+    .digest('hex')
+    .slice(0, 48)}`;
+
+  const inner = `
+    <p>Hi${safeCompany ? ` from <strong>${safeCompany}</strong>` : ''},</p>
+    <p>You started setting up Pest Trace but did not finish adding your card for the free trial. Your workspace is waiting — add a payment method to unlock logbooks, reports, and team access.</p>
+    <p style="text-align:center;margin:28px 0;">
+      <a href="${escapeHtml(dashboardUrl)}" style="background-color:#2F855A;color:#ffffff;padding:14px 28px;text-decoration:none;border-radius:8px;font-weight:600;font-size:16px;display:inline-block;">
+        Finish setup
+      </a>
+    </p>
+    <p>Opening the link takes you back to your dashboard checkout step. Your trial does not start billing until the trial period ends.</p>
+    <p>Questions? Reply to this email or contact us at <a href="mailto:${escapeHtml(supportEmail)}">${escapeHtml(supportEmail)}</a>.</p>
+    <p>Kind regards,<br />The Pest Trace team</p>
+  `;
+
+  const text = `Hi${params.companyName?.trim() ? ` (${params.companyName.trim()})` : ''},
+
+You started setting up Pest Trace but did not finish adding your card for the free trial.
+
+Finish setup: ${dashboardUrl}
+
+Your trial does not start billing until the trial period ends.
+
+Questions? Contact ${supportEmail}.
+
+Kind regards,
+The Pest Trace team`;
+
+  return sendMail({
+    to: [email],
+    subject: 'Finish setting up Pest Trace — add your card to start your trial',
+    html: brandEmailHtml('Finish your Pest Trace setup', inner),
+    text,
+    idempotencyKey,
+  });
+}
+
 /**
  * Delivers marketing/contact form submissions to the support inbox via Resend.
  * Uses an idempotency key so network retries or double-clicks do not send duplicate emails within 24 hours.

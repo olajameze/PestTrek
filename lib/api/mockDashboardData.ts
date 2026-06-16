@@ -93,6 +93,22 @@ export interface AuditReadinessSummary {
   openComplianceIssues: number;
 }
 
+export interface FollowUpQueueItem {
+  id: string;
+  clientName: string;
+  address: string;
+  treatment: string;
+  followUpDate: string | null;
+  bucket: 'overdue' | 'today' | 'upcoming';
+}
+
+export interface FollowUpQueueData {
+  overdue: FollowUpQueueItem[];
+  today: FollowUpQueueItem[];
+  upcoming: FollowUpQueueItem[];
+  totalOpen: number;
+}
+
 export interface DashboardData {
   todaySchedule: {
     appointments: Appointment[];
@@ -111,6 +127,7 @@ export interface DashboardData {
   auditReadiness?: AuditReadinessSummary;
   chemicalLog: ChemicalUsage[];
   urgentAlerts: UrgentAlert[];
+  followUpQueue: FollowUpQueueData;
   nextBestActions: NextBestAction[];
   customerValue: CustomerValue;
   retention: RetentionData;
@@ -203,6 +220,12 @@ export async function fetchDashboardData(range: DashboardDateRangeOption): Promi
     compliance,
     chemicalLog,
     urgentAlerts,
+    followUpQueue: {
+      overdue: [],
+      today: [],
+      upcoming: [],
+      totalOpen: 0,
+    },
     nextBestActions,
     customerValue,
     retention,

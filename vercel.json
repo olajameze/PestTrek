@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/abandoned-signup-checkout",
+      "schedule": "0 9 * * *"
+    }
+  ]
+}

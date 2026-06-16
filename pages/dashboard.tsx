@@ -1122,6 +1122,7 @@ if (!user || companyLoadState === 'loading') return (
           activeTab={currentTab as string} 
           onTabChange={(tab: string) => setActiveTab(tab as Tab)} 
           onSignOut={handleSignOut}
+          role="owner"
           previewMode={isPreviewMode}
         />
         <main className="min-w-0 flex-1 p-4 pt-24 sm:p-6 sm:pt-24 lg:p-8 lg:pt-24">
@@ -1248,7 +1249,11 @@ if (!user || companyLoadState === 'loading') return (
               </>
               )}
               {currentTab === 'logbook' && (
-                <LogbookTab companyId={company.id} technicians={technicians} />
+                <LogbookTab
+                  companyId={company.id}
+                  technicians={technicians}
+                  showTechnicianLogLink={canAdminUseTechnicianView}
+                />
               )}
               {currentTab === 'settings' && (
                 <SettingsTab 
@@ -1696,11 +1701,36 @@ function TechniciansTab({ technicians, plan, onAddTechnician, onRemoveTechnician
   );
 }
 
-function LogbookTab({ companyId, technicians }: { companyId: string; technicians: Technician[] }) {
-  return <LogbookEntries companyId={companyId} technicians={technicians} allowCreate={false} />;
+function LogbookTab({
+  companyId,
+  technicians,
+  showTechnicianLogLink,
+}: {
+  companyId: string;
+  technicians: Technician[];
+  showTechnicianLogLink: boolean;
+}) {
+  return (
+    <LogbookEntries
+      companyId={companyId}
+      technicians={technicians}
+      allowCreate={false}
+      showTechnicianLogLink={showTechnicianLogLink}
+    />
+  );
 }
 
-function LogbookEntries({ companyId, technicians, allowCreate }: { companyId: string; technicians: Technician[]; allowCreate: boolean }) {
+function LogbookEntries({
+  companyId,
+  technicians,
+  allowCreate,
+  showTechnicianLogLink = false,
+}: {
+  companyId: string;
+  technicians: Technician[];
+  allowCreate: boolean;
+  showTechnicianLogLink?: boolean;
+}) {
   const [entries, setEntries] = useState<LogbookEntry[]>([]);
   const [filteredEntries, setFilteredEntries] = useState<LogbookEntry[]>([]);
   const [search, setSearch] = useState('');
@@ -1859,8 +1889,22 @@ function LogbookEntries({ companyId, technicians, allowCreate }: { companyId: st
         </Card>
       ) : (
         <Card className="border-blue-200 bg-blue-50">
-          <div className="p-4 text-sm text-blue-900">
-            Admin accounts can review/export logbook records here. New log entries are created from technician accounts in the technician workspace.
+          <div className="space-y-3 p-4 text-sm text-blue-900">
+            <p>
+              <strong>Review and export</strong> logbook records here. This view is read-only for business admins.
+            </p>
+            <p>
+              <strong>Create new entries</strong> in the Technician workspace — field jobs are logged there so records stay tied to the right technician.
+            </p>
+            {showTechnicianLogLink ? (
+              <Link href="/technician" className="inline-flex font-semibold text-primary-700 underline">
+                Log a job as technician
+              </Link>
+            ) : (
+              <Link href="/dashboard?tab=technicians" className="inline-flex font-semibold text-primary-700 underline">
+                Set up technicians in your team
+              </Link>
+            )}
           </div>
         </Card>
       )}
