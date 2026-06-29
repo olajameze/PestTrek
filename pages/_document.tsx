@@ -1,9 +1,7 @@
 import { Html, Head, Main, NextScript } from 'next/document';
 import { getWebManifestLinkHref } from '../lib/siteOrigin';
 
-const UMAMI_SCRIPT_URL = process.env.NEXT_PUBLIC_UMAMI_SCRIPT_URL ?? 'https://cloud.umami.is/script.js';
-const UMAMI_WEBSITE_ID =
-  process.env.NEXT_PUBLIC_UMAMI_WEBSITE_ID ?? 'fa32c121-cb14-4b86-a3bd-0ab1bfd6bfca';
+const CLARITY_PROJECT_ID = process.env.NEXT_PUBLIC_CLARITY_PROJECT_ID ?? 'xekb1rp4c9';
 
 export default function Document() {
   return (
@@ -36,9 +34,13 @@ export default function Document() {
 
         {/* Fonts - handled by next/font/google in _app.tsx */}
 
-        {/* Umami Analytics (privacy-friendly page views) */}
-        {process.env.NODE_ENV === 'production' && UMAMI_WEBSITE_ID ? (
-          <script defer src={UMAMI_SCRIPT_URL} data-website-id={UMAMI_WEBSITE_ID} />
+        {/* Microsoft Clarity (session recordings & heatmaps) */}
+        {process.env.NODE_ENV === 'production' && CLARITY_PROJECT_ID ? (
+          <script
+            dangerouslySetInnerHTML={{
+              __html: `(function(c,l,a,r,i,t,y){c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);})(window,document,"clarity","script","${CLARITY_PROJECT_ID}");`,
+            }}
+          />
         ) : null}
 
         {/* Keep startup assets minimal to avoid broken links in production */}
