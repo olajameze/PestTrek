@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import Button from './ui/Button';
-import { DashboardIcon, LogbookIcon, ReportsIcon, SettingsIcon } from './icons';
+import { DashboardIcon, LogbookIcon, ReportsIcon, SettingsIcon, CalendarIcon } from './icons';
 
 interface SidebarProps {
   activeTab?: string;
@@ -41,11 +41,13 @@ export default function Sidebar({
   const ownerTabs = [
     { id: 'technicians', label: 'Dashboard', href: `/dashboard?tab=technicians${pq}`, icon: DashboardIcon },
     { id: 'logbook', label: 'Logbook', href: `/dashboard?tab=logbook${pq}`, icon: LogbookIcon },
+    { id: 'scheduling', label: 'Scheduling', href: `/scheduling${previewMode ? '?preview=1' : ''}`, icon: CalendarIcon },
     { id: 'reports', label: 'Reports', href: `/reports${previewMode ? '?preview=1' : ''}`, icon: ReportsIcon },
     { id: 'settings', label: 'Settings', href: `/dashboard?tab=settings${pq}`, icon: SettingsIcon },
   ];
   const technicianTabs = [
     { id: 'logbook', label: 'Logbook', href: `/technician${previewMode ? '?preview=1' : ''}`, icon: LogbookIcon },
+    { id: 'scheduling', label: 'Scheduling', href: `/scheduling${previewMode ? '?preview=1' : ''}`, icon: CalendarIcon },
     { id: 'reports', label: 'Reports', href: `/reports${previewMode ? '?preview=1' : ''}`, icon: ReportsIcon },
   ];
   const tabs = role === 'technician' ? technicianTabs : ownerTabs;

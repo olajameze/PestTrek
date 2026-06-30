@@ -6,6 +6,8 @@ export type AppNotification = {
   read: boolean;
   createdAt: string;
   sourceId?: string;
+  recipientEmail?: string;
+  category?: 'scheduling' | string;
 };
 
 export function parseNotifications(raw: unknown): AppNotification[] {
@@ -29,6 +31,8 @@ export function parseNotifications(raw: unknown): AppNotification[] {
         createdAt:
           typeof row.createdAt === 'string' ? row.createdAt : new Date().toISOString(),
         sourceId: typeof row.sourceId === 'string' ? row.sourceId : undefined,
+        recipientEmail: typeof row.recipientEmail === 'string' ? row.recipientEmail : undefined,
+        category: typeof row.category === 'string' ? row.category : undefined,
       };
     })
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());

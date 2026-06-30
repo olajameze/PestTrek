@@ -2,7 +2,7 @@ export type UserRole = 'admin' | 'manager' | 'technician';
 export type UserPlan = 'starter' | 'business' | 'enterprise' | 'trial' | 'pro';
 
 export type PermissionAction = 'read' | 'write' | 'export' | 'manage';
-export type PermissionResource = 'audit_logs' | 'offline_queue' | 'logbook' | 'reports' | 'settings' | 'technicians';
+export type PermissionResource = 'audit_logs' | 'offline_queue' | 'logbook' | 'reports' | 'settings' | 'technicians' | 'scheduling';
 
 export type Permissions = {
   role: UserRole;
@@ -35,6 +35,7 @@ export function buildPermissions(roleRaw: unknown, planRaw: unknown): Permission
     // Technician rules
     if (resource === 'audit_logs') return false;
     if (resource === 'settings' && action === 'manage') return false;
+    if (resource === 'scheduling' && (action === 'write' || action === 'manage')) return false;
 
     // Plan rules (best-effort; DB-side checks still required)
     if (resource === 'reports' && action === 'export') {

@@ -14,12 +14,14 @@ export const MARKETING_PLAN_FEATURES = {
   business: [
     'Up to 10 technicians',
     'Everything in Pro',
+    'Smart Scheduling — calendar, drag-and-drop, technician assignment, recurring visits',
     'Customer analytics on the dashboard — including customer lifetime value (CLV)',
     'Richer business insights on Reports — performance, routes, and revenue-oriented summaries',
   ],
   enterprise: [
     'Unlimited technicians',
     'Everything in Business',
+    'Smart Scheduling — full calendar module with team workload and in-app job alerts',
     'Retention & churn plus CSAT / NPS trends; log NPS on Reports',
     'Dedicated account manager details in Settings',
     'Enterprise security options — IP allowlist, verified-email requirements for sensitive actions',

@@ -10,7 +10,13 @@ type NotificationItem = {
   severity: 'high' | 'medium' | 'low';
   read: boolean;
   createdAt: string;
+  recipientEmail?: string;
 };
+
+function filterNotificationsForUser(items: NotificationItem[], userEmail: string | null): NotificationItem[] {
+  const normalized = userEmail?.toLowerCase() ?? '';
+  return items.filter((item) => !item.recipientEmail || item.recipientEmail.toLowerCase() === normalized);
+}
 
 export default function NotificationCenter() {
   const router = useRouter();
@@ -36,7 +42,8 @@ export default function NotificationCenter() {
       });
       if (!res.ok) return;
       const data = await res.json().catch(() => []);
-      setItems(Array.isArray(data) ? data : []);
+      const rows = Array.isArray(data) ? (data as NotificationItem[]) : [];
+      setItems(filterNotificationsForUser(rows, session.user.email ?? null));
     };
     void load();
   }, []);

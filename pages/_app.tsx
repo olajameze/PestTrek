@@ -5,6 +5,7 @@ import { Analytics } from '@vercel/analytics/react';
 import { Inter } from 'next/font/google';
 import dynamic from 'next/dynamic';
 import '../styles/globals.css';
+import '../components/scheduling/scheduling-calendar.css';
 import { ToastProvider } from '../components/ui/ToastProvider';
 
 const PWAInstallPrompt = dynamic(() => import('../components/PWAInstallPrompt'), { ssr: false });

@@ -40,6 +40,9 @@ model Company {
   technicians             Technician[]
   activation              CompanyActivation?
   trialUpgradeFeedback    TrialUpgradeFeedback?
+  schedule                Schedule?
+  appointments            Appointment[]
+  recurringAppointments   RecurringAppointment[]
 
   @@map("Company")
   @@schema("public")
@@ -84,6 +87,8 @@ model Technician {
   createdAt               DateTime?                @default(now()) @map("createdAt") @db.Timestamptz(6)
   certifications          Certification[]
   logbookEntryTechnicians LogbookEntryTechnician[]
+  appointmentTechnicians  AppointmentTechnician[]
+  technicianAvailability  TechnicianAvailability[]
   company                 Company                  @relation(fields: [companyId], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@map("Technician")
@@ -132,6 +137,7 @@ model LogbookEntry {
   company                 Company                  @relation(fields: [companyId], references: [id], onDelete: Cascade, onUpdate: NoAction)
   logbookEntryTechnicians LogbookEntryTechnician[]
   photos                  LogbookPhoto[]
+  appointment             Appointment?
 
   @@map("LogbookEntry")
   @@schema("public")
@@ -317,6 +323,105 @@ model BackgroundJobRun {
   detail         Json?     @map("detail")
 
   @@map("background_job_runs")
+  @@schema("public")
+}
+
+/// Per-company scheduling settings (Smart Scheduling module).
+model Schedule {
+  id                     String   @id @default(dbgenerated("gen_random_uuid()")) @map("id")
+  companyId              String   @unique @map("company_id")
+  timezone               String   @default("Europe/London") @map("timezone")
+  defaultDurationMinutes Int      @default(60) @map("default_duration_minutes")
+  generationHorizonDays  Int      @default(90) @map("generation_horizon_days")
+  createdAt              DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt              DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  company                Company  @relation(fields: [companyId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@map("schedule")
+  @@schema("public")
+}
+
+/// Recurring appointment template for Smart Scheduling.
+model RecurringAppointment {
+  id             String        @id @default(dbgenerated("gen_random_uuid()")) @map("id")
+  companyId      String        @map("company_id")
+  intervalType   String        @map("interval_type")
+  intervalDays   Int?          @map("interval_days")
+  anchorStart    DateTime      @map("anchor_start") @db.Timestamptz(6)
+  endsAt         DateTime?     @map("ends_at") @db.Timestamptz(6)
+  generatedUntil DateTime      @map("generated_until") @db.Timestamptz(6)
+  exceptionDates Json?         @map("exception_dates")
+  isActive       Boolean       @default(true) @map("is_active")
+  clientName     String        @map("client_name")
+  address        String        @map("address")
+  postcode       String?       @map("postcode")
+  treatment      String?       @map("treatment")
+  notes          String?       @map("notes")
+  durationMinutes Int          @default(60) @map("duration_minutes")
+  createdAt      DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  company        Company       @relation(fields: [companyId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  appointments   Appointment[]
+
+  @@index([companyId], map: "recurring_appointment_company_id_idx")
+  @@map("recurring_appointment")
+  @@schema("public")
+}
+
+/// Scheduled visit (Smart Scheduling module).
+model Appointment {
+  id                     String                  @id @default(dbgenerated("gen_random_uuid()")) @map("id")
+  companyId              String                  @map("company_id")
+  logbookEntryId         String?                 @unique @map("logbook_entry_id")
+  recurringAppointmentId String?                 @map("recurring_appointment_id")
+  clientName             String                  @map("client_name")
+  address                String                  @map("address")
+  postcode               String?                 @map("postcode")
+  treatment              String?                 @map("treatment")
+  notes                  String?                 @map("notes")
+  scheduledStart         DateTime                @map("scheduled_start") @db.Timestamptz(6)
+  scheduledEnd           DateTime                @map("scheduled_end") @db.Timestamptz(6)
+  status                 String                  @default("scheduled") @map("status")
+  createdAt              DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt              DateTime                @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  company                Company                 @relation(fields: [companyId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  logbookEntry           LogbookEntry?           @relation(fields: [logbookEntryId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  recurringAppointment   RecurringAppointment?   @relation(fields: [recurringAppointmentId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  appointmentTechnicians AppointmentTechnician[]
+
+  @@index([companyId, scheduledStart], map: "appointment_company_scheduled_start_idx")
+  @@index([recurringAppointmentId], map: "appointment_recurring_id_idx")
+  @@map("appointment")
+  @@schema("public")
+}
+
+model AppointmentTechnician {
+  appointmentId String      @map("appointment_id")
+  technicianId  String      @map("technician_id")
+  appointment   Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  technician    Technician  @relation(fields: [technicianId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([appointmentId, technicianId])
+  @@index([technicianId], map: "appointment_technician_technician_id_idx")
+  @@map("appointment_technician")
+  @@schema("public")
+}
+
+/// Technician weekly or one-off availability blocks.
+model TechnicianAvailability {
+  id            String     @id @default(dbgenerated("gen_random_uuid()")) @map("id")
+  technicianId  String     @map("technician_id")
+  dayOfWeek     Int?       @map("day_of_week")
+  specificDate  DateTime?  @map("specific_date") @db.Date
+  startTime     String     @map("start_time")
+  endTime       String     @map("end_time")
+  isAvailable   Boolean    @default(true) @map("is_available")
+  createdAt     DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  technician    Technician @relation(fields: [technicianId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([technicianId], map: "technician_availability_technician_id_idx")
+  @@map("technician_availability")
   @@schema("public")
 }
 

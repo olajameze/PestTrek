@@ -11,6 +11,7 @@ This matrix reflects **what the codebase enforces today** (API routes + dashboar
 | **PDF / reports** (`/api/reports`, `/reports`) | During trial only | Yes | Yes | Yes |
 | **Technician certifications** (premium upload / view APIs) | During trial only | Yes | Yes | Yes |
 | **Technician seats** | Max **2** technicians | Unlimited | Unlimited | Unlimited |
+| **Smart Scheduling** (`/scheduling`, calendar module) | No | No | Yes | Yes |
 | **Stripe self-serve checkout** (`/upgrade`) | — | Yes | Yes | Yes |
 
 ## Plan strings in the database
@@ -23,6 +24,7 @@ This matrix reflects **what the codebase enforces today** (API routes + dashboar
 - **Certifications (premium):** [`pages/api/technicians/[id]/certifications.ts`](../pages/api/technicians/[id]/certifications.ts).
 - **Technician limit:** [`pages/api/technicians.ts`](../pages/api/technicians.ts) — `plan === 'trial'` → max 2.
 - **Enterprise NPS:** [`pages/api/enterprise/nps.ts`](../pages/api/enterprise/nps.ts) — Enterprise plan or active trial preview.
+- **Smart Scheduling:** [`lib/scheduling/planAccess.ts`](../lib/scheduling/planAccess.ts) + [`pages/api/scheduling/*`](../pages/api/scheduling/) — Business and Enterprise only; UI at [`pages/scheduling.tsx`](../pages/scheduling.tsx).
 - **Dashboard insights payload:** [`pages/api/dashboard-insights.ts`](../pages/api/dashboard-insights.ts) passes `plan` into analytics builders; **hiding** Business vs Enterprise-only cards is done in the UI: [`components/dashboard/DashboardEnhancements.tsx`](../components/dashboard/DashboardEnhancements.tsx) + [`lib/auth/plan.ts`](../lib/auth/plan.ts). Trial accounts also use [`lib/trialEnterprisePreview.ts`](../lib/trialEnterprisePreview.ts) for Enterprise-tier preview (e.g. chemical log depth).
 
 ## Notes

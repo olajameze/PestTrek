@@ -13,6 +13,7 @@ Implementation:
 - **Technician**:
   - No audit logs access.
   - Limited settings management.
+  - Scheduling: read-only (view assigned calendar); no create/edit/delete/assign.
 
 ### Plan gating
 - Export actions are allowed for `pro`, `business`, `enterprise`.

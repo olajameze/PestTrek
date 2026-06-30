@@ -25,6 +25,11 @@
     "e2e:webhook": "npx playwright test tests/stripe-webhook.spec.ts"
   },
   "dependencies": {
+    "@fullcalendar/core": "^6.1.17",
+    "@fullcalendar/daygrid": "^6.1.17",
+    "@fullcalendar/interaction": "^6.1.17",
+    "@fullcalendar/react": "^6.1.17",
+    "@fullcalendar/timegrid": "^6.1.17",
     "@prisma/adapter-pg": "^7.7.0",
     "@prisma/client": "^7.8.0",
     "@supabase/auth-helpers-nextjs": "^0.15.0",

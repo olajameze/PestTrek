@@ -109,6 +109,8 @@ export interface FollowUpQueueData {
   totalOpen: number;
 }
 
+import type { SchedulingWidgetsData } from '../scheduling/types';
+
 export interface DashboardData {
   todaySchedule: {
     appointments: Appointment[];
@@ -117,6 +119,7 @@ export interface DashboardData {
     percentComplete: number;
     locations: TechnicianLocation[];
   };
+  schedulingWidgets?: SchedulingWidgetsData;
   compliance: {
     series: CompliancePoint[];
     openActions: ComplianceAction[];
@@ -230,5 +233,11 @@ export async function fetchDashboardData(range: DashboardDateRangeOption): Promi
     customerValue,
     retention,
     csat,
+    schedulingWidgets: {
+      todayJobs: [],
+      upcomingJobs: [],
+      unassignedJobs: [],
+      overdueJobs: [],
+    },
   };
 }

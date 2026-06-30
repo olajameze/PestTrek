@@ -12,6 +12,10 @@ import FollowUpQueue from './FollowUpQueue';
 import CustomerLifetimeValue from './CustomerLifetimeValue';
 import RetentionChurn from './RetentionChurn';
 import CSATScore from './CSATScore';
+import SchedulingTodayJobs from './SchedulingTodayJobs';
+import SchedulingUpcomingJobs from './SchedulingUpcomingJobs';
+import SchedulingUnassignedJobs from './SchedulingUnassignedJobs';
+import SchedulingOverdueJobs from './SchedulingOverdueJobs';
 import { useUserPlan } from '../../lib/auth/plan';
 import { useDateRange } from '../../lib/hooks/useDateRange';
 import { useDashboardData } from '../../lib/hooks/useDashboardData';
@@ -34,6 +38,7 @@ export default function DashboardEnhancements({ plan, enterprisePreview = false 
 
   const showAnalytics = userPlan === 'business' || userPlan === 'enterprise' || enterprisePreview;
   const showEnterprise = userPlan === 'enterprise' || enterprisePreview;
+  const showScheduling = userPlan === 'business' || userPlan === 'enterprise';
 
   const planDescription = useMemo(() => {
     if (userPlan === 'enterprise') return 'Enterprise analytics are available.';
@@ -172,6 +177,15 @@ export default function DashboardEnhancements({ plan, enterprisePreview = false 
       </div>
 
       <AuditReadinessCentre auditReadiness={data?.auditReadiness} loading={loading} />
+
+      {showScheduling ? (
+        <div className="grid gap-6 xl:grid-cols-2">
+          <SchedulingTodayJobs appointments={data?.schedulingWidgets?.todayJobs ?? []} loading={loading} />
+          <SchedulingUpcomingJobs appointments={data?.schedulingWidgets?.upcomingJobs ?? []} loading={loading} />
+          <SchedulingUnassignedJobs appointments={data?.schedulingWidgets?.unassignedJobs ?? []} loading={loading} />
+          <SchedulingOverdueJobs appointments={data?.schedulingWidgets?.overdueJobs ?? []} loading={loading} />
+        </div>
+      ) : null}
 
       <details className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm" open>
         <summary className="cursor-pointer text-lg font-semibold text-navy">Customer & retention analytics</summary>

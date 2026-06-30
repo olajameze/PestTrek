@@ -8,6 +8,8 @@ import { buildAuditReadinessSummary } from './compliance/auditReadiness';
 import { computeComplianceHealthScore } from './compliance/healthScore';
 import { buildQualificationUrgentAlerts } from './compliance/qualificationAlerts';
 import { buildFollowUpQueue } from './followUpQueue';
+import { buildSchedulingWidgets, emptySchedulingWidgets } from './scheduling/dashboardWidgets';
+import { canUseSmartScheduling } from './scheduling/planAccess';
 
 const ESTIMATED_GBP_PER_VISIT = 135;
 
@@ -468,6 +470,10 @@ for (const e of entriesInRange) {
   );
   const followUpQueue = buildFollowUpQueue(followUpCandidates, now.getTime());
 
+  const schedulingWidgets = canUseSmartScheduling(policy.plan)
+    ? await buildSchedulingWidgets(prisma, companyId, policy.plan)
+    : emptySchedulingWidgets();
+
   return {
     todaySchedule: {
       appointments,
@@ -507,5 +513,6 @@ for (const e of entriesInRange) {
       nps,
       trend: rawNpsResponses.length > 0 ? npsTrend : csatTrend,
     },
+    schedulingWidgets,
   };
 }

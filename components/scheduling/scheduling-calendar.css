@@ -1,0 +1,36 @@
+.scheduling-calendar .fc {
+  --fc-border-color: #e4e4e7;
+  --fc-button-bg-color: #2F855A;
+  --fc-button-border-color: #2F855A;
+  --fc-button-hover-bg-color: #276749;
+  --fc-button-hover-border-color: #276749;
+  --fc-button-active-bg-color: #22543d;
+  --fc-button-active-border-color: #22543d;
+  --fc-today-bg-color: rgba(47, 133, 90, 0.08);
+  --fc-event-bg-color: #2F855A;
+  --fc-event-border-color: #276749;
+  font-family: inherit;
+}
+
+.scheduling-calendar .fc .fc-toolbar-title {
+  color: #1e293b;
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.scheduling-calendar .fc .fc-col-header-cell-cushion,
+.scheduling-calendar .fc .fc-daygrid-day-number,
+.scheduling-calendar .fc .fc-timegrid-slot-label-cushion {
+  color: #475569;
+}
+
+.scheduling-calendar .fc .fc-event {
+  border-radius: 0.75rem;
+  padding: 0.125rem 0.375rem;
+}
+
+.scheduling-calendar .fc .fc-button {
+  border-radius: 0.75rem;
+  font-weight: 600;
+  text-transform: capitalize;
+}
