@@ -1,5 +1,5 @@
 import dynamic from 'next/dynamic';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { supabase } from '../lib/supabase';
@@ -10,7 +10,6 @@ import { Skeleton } from '../components/ui/Skeleton';
 import { hasSubscriptionAccess } from '../lib/subscriptionAccess';
 import { isCompanyOwnerSession } from '../lib/auth/resolveWorkspaceRoute';
 import { canUseSmartScheduling } from '../lib/scheduling/planAccess';
-import { isSchedulingDemoMode, isSchedulingLocalPreviewEnabled } from '../lib/scheduling/demoData';
 import { usePermissions } from '../hooks/usePermissions';
 
 const SchedulingCalendar = dynamic(() => import('../components/scheduling/SchedulingCalendar'), {
@@ -26,59 +25,19 @@ type CompanySnapshot = {
   paymentGraceEndsAt: string | null;
 };
 
-function DemoSchedulingShell() {
-  return (
-    <div className="min-h-screen bg-slate-50">
-      <header className="border-b border-zinc-200 bg-white px-4 py-4 lg:px-8">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
-          <Link href="/" className="text-lg font-semibold text-navy">
-            Pest Trace
-          </Link>
-          <Link href="/auth/signin">
-            <Button size="sm">Sign in</Button>
-          </Link>
-        </div>
-      </header>
-      <main className="mx-auto max-w-7xl p-4 lg:p-8">
-        <SchedulingCalendar canWrite={false} demoMode />
-      </main>
-    </div>
-  );
-}
-
 export default function SchedulingPage() {
   const router = useRouter();
   const permissions = usePermissions();
   const [loading, setLoading] = useState(true);
   const [company, setCompany] = useState<CompanySnapshot | null>(null);
   const [role, setRole] = useState<'owner' | 'technician'>('owner');
-  const [previewMode, setPreviewMode] = useState(false);
-
-  const queryDemo = router.isReady ? router.query.demo : undefined;
-  const explicitDemo = useMemo(
-    () => isSchedulingDemoMode(queryDemo),
-    [queryDemo],
-  );
 
   useEffect(() => {
-    if (explicitDemo) {
-      setPreviewMode(true);
-      setLoading(false);
-      return undefined;
-    }
-
     let mounted = true;
 
     async function load() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
-        if (isSchedulingLocalPreviewEnabled()) {
-          if (mounted) {
-            setPreviewMode(true);
-            setLoading(false);
-          }
-          return;
-        }
         router.replace('/auth/signin');
         return;
       }
@@ -133,15 +92,11 @@ export default function SchedulingPage() {
     return () => {
       mounted = false;
     };
-  }, [router, explicitDemo]);
+  }, [router]);
 
-  const canWrite = previewMode ? false : permissions.can('write', 'scheduling');
-  const hasAccess = previewMode || (company ? hasSubscriptionAccess(company) : false);
-  const hasScheduling = previewMode || (company ? canUseSmartScheduling(company.plan) : false);
-
-  if (previewMode) {
-    return <DemoSchedulingShell />;
-  }
+  const canWrite = permissions.can('write', 'scheduling');
+  const hasAccess = company ? hasSubscriptionAccess(company) : false;
+  const hasScheduling = company ? canUseSmartScheduling(company.plan) : false;
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -164,14 +119,6 @@ export default function SchedulingPage() {
               <p className="text-sm text-slate-600">
                 Smart Scheduling is available on Business and Enterprise plans. Your operational Today&apos;s schedule widget on the dashboard remains available on your current plan.
               </p>
-              {isSchedulingLocalPreviewEnabled() ? (
-                <p className="text-sm text-slate-600">
-                  Local preview:{' '}
-                  <Link href="/scheduling/demo" className="font-semibold text-primary-600 underline">
-                    open demo calendar
-                  </Link>
-                </p>
-              ) : null}
               <Link href="/upgrade">
                 <Button>Upgrade to Business</Button>
               </Link>

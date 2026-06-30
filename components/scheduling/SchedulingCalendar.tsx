@@ -11,7 +11,6 @@ import AppointmentDetailsPanel from './AppointmentDetailsPanel';
 import DeleteAppointmentDialog from './DeleteAppointmentDialog';
 import WorkloadPanel from './WorkloadPanel';
 import type { AppointmentDTO, CalendarView, RecurrenceScope } from '../../lib/scheduling/types';
-import Link from 'next/link';
 import {
   createAppointment,
   createRecurringSeries,
@@ -23,21 +22,9 @@ import {
   updateAppointment,
 } from '../../lib/api/schedulingClient';
 
-import {
-  getSchedulingDemoAppointments,
-  getSchedulingDemoTechnicians,
-  getSchedulingDemoWorkload,
-} from '../../lib/scheduling/demoData';
-
 type TechnicianOption = { id: string; name: string; email: string };
 
-export default function SchedulingCalendar({
-  canWrite,
-  demoMode = false,
-}: {
-  canWrite: boolean;
-  demoMode?: boolean;
-}) {
+export default function SchedulingCalendar({ canWrite }: { canWrite: boolean }) {
   const [view, setView] = useState<CalendarView>('week');
   const [anchor, setAnchor] = useState(() => new Date());
   const [appointments, setAppointments] = useState<AppointmentDTO[]>([]);
@@ -53,12 +40,6 @@ export default function SchedulingCalendar({
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      if (demoMode) {
-        setAppointments(getSchedulingDemoAppointments());
-        setTechnicians(getSchedulingDemoTechnicians());
-        setWorkload(getSchedulingDemoWorkload());
-        return;
-      }
       const [calendar, techs] = await Promise.all([fetchCalendar(view, anchor), fetchTechnicians()]);
       setAppointments(calendar.appointments);
       setTechnicians(techs);
@@ -73,7 +54,7 @@ export default function SchedulingCalendar({
     } finally {
       setLoading(false);
     }
-  }, [view, anchor, range, demoMode]);
+  }, [view, anchor, range]);
 
   useEffect(() => {
     void load();
@@ -154,15 +135,6 @@ export default function SchedulingCalendar({
 
   return (
     <div className="space-y-6">
-      {demoMode ? (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          Local demo mode — sample data only.{' '}
-          <Link href="/auth/signin" className="font-semibold underline">
-            Sign in
-          </Link>{' '}
-          for live scheduling.
-        </div>
-      ) : null}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-sm font-semibold uppercase tracking-[0.24em] text-slate-500">Smart Scheduling</p>
