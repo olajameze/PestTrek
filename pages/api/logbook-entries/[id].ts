@@ -7,6 +7,7 @@ import { normalizeAuthEmail } from '../../../lib/auth/userSession';
 import { technicianEmailWhere } from '../../../lib/auth/technicianGate';
 import { deleteIntelligenceForLogbookEntry, scheduleIntelligenceIngest } from '../../../lib/intelligence/ingestLogbookEntry';
 import { getPostalCodeConfig } from '../../../lib/postalCode';
+import { notifyJobComplete } from '../../../lib/comms/jobCompleteNotifier';
 import {
   recordJobCompletedActivation,
   recordLogbookActivationMilestones,
@@ -252,6 +253,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (status && status.toLowerCase() === 'completed') {
       void recordJobCompletedActivation(prisma, company.id).catch((e) =>
         console.error('Activation job completed error:', e),
+      );
+      void notifyJobComplete(prisma, company.id, id).catch((e) =>
+        console.error('[logbook] job complete notify failed', e),
       );
     }
 

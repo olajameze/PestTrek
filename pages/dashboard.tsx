@@ -34,6 +34,7 @@ import { parseApiBody } from '../lib/api/parseApiBody';
 import { startSignupCheckout, formatTrialChargeDate } from '../lib/stripe/signupCheckout';
 import { usePermissions } from '../hooks/usePermissions';
 import { isCompanyOwnerSession } from '../lib/auth/resolveWorkspaceRoute';
+import DevPreviewBanner from '../components/dev/DevPreviewBanner';
 
 const DashboardEnhancements = dynamic(() => import('../components/dashboard/DashboardEnhancements'));
 const OnboardingChecklist = dynamic(() => import('../components/dashboard/OnboardingChecklist'));
@@ -487,20 +488,25 @@ export default function Dashboard() {
           id: 'preview-company',
           name: 'Pest Trace Preview Co.',
           email: 'owner@preview.local',
+          plan: 'enterprise',
           requireSignature: false,
           requirePhotos: false,
           notificationPreferences: {
             trialExpiry: true,
             renewal: true,
             certificationExpiry: true,
-          },
+            business: {
+              jobCompleteEmailToOwner: true,
+              jobCompleteEmailToCustomer: true,
+            },
+          } as Record<string, unknown>,
           subscriptionStatus: 'active',
         });
         setTechnicians([
           { id: 'tech-1', name: 'John Smith', email: 'john@preview.local' },
           { id: 'tech-2', name: 'Sarah Johnson', email: 'sarah@preview.local' },
         ]);
-        setSubscription({ status: 'active' });
+        setSubscription({ status: 'active', plan: 'enterprise' });
         setCompanyLoadState('ready');
         return;
       }
@@ -1116,6 +1122,7 @@ if (!user || companyLoadState === 'loading') return (
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-offwhite page-fade-in">
+      {isPreviewMode ? <DevPreviewBanner /> : null}
       <OnboardingTour />
       <div className="flex min-w-0 lg:pl-0">
         <Sidebar 

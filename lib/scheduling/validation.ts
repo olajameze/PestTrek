@@ -73,6 +73,8 @@ export function validateCreateAppointment(body: unknown): CreateAppointmentInput
     scheduledEnd: scheduledEnd.toISOString(),
     technicianIds: parseStringArray(row.technicianIds),
     logbookEntryId: parseOptionalString(row.logbookEntryId),
+    customerId: parseOptionalString(row.customerId),
+    siteId: parseOptionalString(row.siteId),
   };
 }
 
@@ -113,6 +115,8 @@ export function validateCreateRecurring(body: unknown): CreateRecurringInput {
         ? Math.floor(row.durationMinutes)
         : 60,
     technicianIds: parseStringArray(row.technicianIds),
+    customerId: parseOptionalString(row.customerId),
+    siteId: parseOptionalString(row.siteId),
   };
 }
 

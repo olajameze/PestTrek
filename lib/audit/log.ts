@@ -34,3 +34,21 @@ export async function writeAuditLog(entry: AuditLogInsert): Promise<void> {
   }
 }
 
+/** Best-effort governance events (portal, exports) — uses audit_logs when available. */
+export async function logGovernanceEvent(
+  action: string,
+  detail: Record<string, unknown>,
+  userId = 'system',
+): Promise<void> {
+  const admin = getSupabaseAdmin();
+  if (!admin) return;
+  const { error } = await admin.from('audit_logs').insert({
+    user_id: userId,
+    action: 'UPDATE',
+    table_name: 'governance',
+    record_id: action,
+    new_values: detail,
+  });
+  if (error) return;
+}
+

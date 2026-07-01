@@ -8,9 +8,10 @@ import { supabase } from '../../lib/supabase';
 interface AuditReadinessCentreProps {
   auditReadiness?: AuditReadinessSummary;
   loading: boolean;
+  canExport?: boolean;
 }
 
-export default function AuditReadinessCentre({ auditReadiness, loading }: AuditReadinessCentreProps) {
+export default function AuditReadinessCentre({ auditReadiness, loading, canExport = true }: AuditReadinessCentreProps) {
   const router = useRouter();
   const [exporting, setExporting] = useState(false);
 
@@ -76,9 +77,12 @@ export default function AuditReadinessCentre({ auditReadiness, loading }: AuditR
             </div>
           </div>
 
-          <Button variant="primary" size="sm" onClick={handleExport} disabled={exporting}>
-            {exporting ? 'Preparing audit pack…' : 'Export audit pack'}
+          <Button variant="primary" size="sm" onClick={handleExport} disabled={exporting || !canExport}>
+            {exporting ? 'Preparing audit pack…' : canExport ? 'Export audit pack' : 'Upgrade for audit pack'}
           </Button>
+          {!canExport ? (
+            <p className="text-xs text-slate-500">Audit pack ZIP export is available on Business and Enterprise plans.</p>
+          ) : null}
         </>
       )}
     </Card>

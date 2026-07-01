@@ -20,10 +20,25 @@ export type EnterpriseAccountManager = {
   phone: string;
 };
 
+export type EnterpriseBrandingConfig = {
+  logoUrl: string;
+  primaryColor: string;
+  footerText: string;
+  portalWelcomeText: string;
+};
+
 export type EnterpriseSettings = {
   accountManager: EnterpriseAccountManager;
   security: EnterpriseSecurityConfig;
   npsResponses: NpsResponse[];
+  branding: EnterpriseBrandingConfig;
+};
+
+const DEFAULT_BRANDING: EnterpriseBrandingConfig = {
+  logoUrl: '',
+  primaryColor: '#2563EB',
+  footerText: '',
+  portalWelcomeText: 'View your service history and download reports.',
 };
 
 const DEFAULT_SETTINGS: EnterpriseSettings = {
@@ -38,6 +53,7 @@ const DEFAULT_SETTINGS: EnterpriseSettings = {
     requireVerifiedEmail: true,
   },
   npsResponses: [],
+  branding: DEFAULT_BRANDING,
 };
 
 function isRecord(value: unknown): value is JsonRecord {
@@ -51,6 +67,7 @@ export function parseEnterpriseSettings(notificationPreferences: unknown): Enter
 
   const accountManagerRaw = isRecord(enterpriseRaw.accountManager) ? enterpriseRaw.accountManager : {};
   const securityRaw = isRecord(enterpriseRaw.security) ? enterpriseRaw.security : {};
+  const brandingRaw = isRecord(enterpriseRaw.branding) ? enterpriseRaw.branding : {};
   const npsResponsesRaw = Array.isArray(enterpriseRaw.npsResponses) ? enterpriseRaw.npsResponses : [];
 
   const npsResponses = npsResponsesRaw
@@ -83,6 +100,18 @@ export function parseEnterpriseSettings(notificationPreferences: unknown): Enter
           : true,
     },
     npsResponses,
+    branding: {
+      logoUrl: typeof brandingRaw.logoUrl === 'string' ? brandingRaw.logoUrl : DEFAULT_BRANDING.logoUrl,
+      primaryColor:
+        typeof brandingRaw.primaryColor === 'string' && brandingRaw.primaryColor.trim()
+          ? brandingRaw.primaryColor.trim()
+          : DEFAULT_BRANDING.primaryColor,
+      footerText: typeof brandingRaw.footerText === 'string' ? brandingRaw.footerText : DEFAULT_BRANDING.footerText,
+      portalWelcomeText:
+        typeof brandingRaw.portalWelcomeText === 'string' && brandingRaw.portalWelcomeText.trim()
+          ? brandingRaw.portalWelcomeText.trim()
+          : DEFAULT_BRANDING.portalWelcomeText,
+    },
   };
 }
 
@@ -97,6 +126,7 @@ export function mergeEnterpriseSettings(
       accountManager: enterpriseSettings.accountManager,
       security: enterpriseSettings.security,
       npsResponses: enterpriseSettings.npsResponses.slice(-200),
+      branding: enterpriseSettings.branding,
     },
   };
 }

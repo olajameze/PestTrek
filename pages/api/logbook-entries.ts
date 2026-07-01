@@ -12,6 +12,8 @@ import { normalizeAuthEmail } from '../../lib/auth/userSession';
 import { technicianEmailWhere } from '../../lib/auth/technicianGate';
 import { getPostalCodeConfig } from '../../lib/postalCode';
 import { recordLogbookActivationMilestones } from '../../lib/activation/companyActivation';
+import { canUseBusinessFeatures } from '../../lib/businessFeatures/planAccess';
+import { resolveCustomerSiteFromText } from '../../lib/crm/customerService';
 function tryParseJson(value: unknown) {
   if (typeof value !== 'string') return value;
   try {
@@ -253,6 +255,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const normalizedRooms = normalizeRoomsValue(rooms);
       if (normalizedRooms) {
         entryData.rooms = normalizedRooms;
+      }
+
+      if (canUseBusinessFeatures(company.plan)) {
+        try {
+          const linked = await resolveCustomerSiteFromText(
+            prisma,
+            company.id,
+            clientName,
+            address,
+            normalizedPostcode,
+            normalizedPropertyType,
+          );
+          entryData.customer = { connect: { id: linked.customerId } };
+          entryData.site = { connect: { id: linked.siteId } };
+        } catch {
+          /* keep free-text only if CRM link fails */
+        }
       }
 
       // Add photos relation if any

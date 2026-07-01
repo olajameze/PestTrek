@@ -4,6 +4,7 @@ import Button from '../ui/Button';
 import Card from '../ui/Card';
 import TodaySchedule from './TodaySchedule';
 import AuditReadinessCentre from './AuditReadinessCentre';
+import ComplianceAlertsWidget from './ComplianceAlertsWidget';
 import ComplianceMonitor from './ComplianceMonitor';
 import ChemicalLog from './ChemicalLog';
 import ActivationDashboard from './ActivationDashboard';
@@ -38,7 +39,7 @@ export default function DashboardEnhancements({ plan, enterprisePreview = false 
 
   const showAnalytics = userPlan === 'business' || userPlan === 'enterprise' || enterprisePreview;
   const showEnterprise = userPlan === 'enterprise' || enterprisePreview;
-  const showScheduling = userPlan === 'business' || userPlan === 'enterprise';
+  const showScheduling = userPlan === 'business' || userPlan === 'enterprise' || enterprisePreview;
 
   const planDescription = useMemo(() => {
     if (userPlan === 'enterprise') return 'Enterprise analytics are available.';
@@ -176,7 +177,8 @@ export default function DashboardEnhancements({ plan, enterprisePreview = false 
         <ChemicalLog chemicalLog={data?.chemicalLog ?? []} loading={loading} onRowClick={handleChemicalDetails} />
       </div>
 
-      <AuditReadinessCentre auditReadiness={data?.auditReadiness} loading={loading} />
+      <AuditReadinessCentre auditReadiness={data?.auditReadiness} loading={loading} canExport={showScheduling} />
+      {showScheduling ? <ComplianceAlertsWidget /> : null}
 
       {showScheduling ? (
         <div className="grid gap-6 xl:grid-cols-2">

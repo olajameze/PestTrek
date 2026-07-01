@@ -34,6 +34,9 @@ model Company {
   /** True when Stripe cancel_at_period_end is set (renewal stopped; access until subscriptionPeriodEndAt). */
   subscriptionCancelAtPeriodEnd Boolean? @default(false) @map("subscriptionCancelAtPeriodEnd")
   plan                    String?        @default("trial") @map("plan")
+  invoicePrefix           String?        @default("INV") @map("invoice_prefix")
+  nextInvoiceNumber       Int?           @default(1) @map("next_invoice_number")
+  defaultVatRate          Decimal?       @default(20) @map("default_vat_rate") @db.Decimal(5, 2)
   createdAt               DateTime?      @default(now()) @map("createdAt") @db.Timestamptz(6)
   updatedAt               DateTime?      @default(now()) @updatedAt @map("updatedAt") @db.Timestamptz(6)
   logbookEntries          LogbookEntry[]
@@ -43,6 +46,10 @@ model Company {
   schedule                Schedule?
   appointments            Appointment[]
   recurringAppointments   RecurringAppointment[]
+  customers               Customer[]
+  sites                   Site[]
+  invoices                Invoice[]
+  complianceAlerts        ComplianceAlert[]
 
   @@map("Company")
   @@schema("public")
@@ -132,13 +139,20 @@ model LogbookEntry {
   endTime                 DateTime?                @map("endTime") @db.Timestamptz(6)
   status                  String?                  @default("open") @map("status")
   price                   Decimal?                 @map("price") @db.Decimal(10, 2)
+  customerId              String?                  @map("customer_id")
+  siteId                  String?                  @map("site_id")
   createdAt               DateTime?                @default(now()) @map("createdAt") @db.Timestamptz(6)
   baitStations            BaitStation[]
   company                 Company                  @relation(fields: [companyId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  customer                Customer?                @relation(fields: [customerId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  site                    Site?                    @relation(fields: [siteId], references: [id], onDelete: SetNull, onUpdate: NoAction)
   logbookEntryTechnicians LogbookEntryTechnician[]
   photos                  LogbookPhoto[]
   appointment             Appointment?
+  invoices                Invoice[]
 
+  @@index([customerId], map: "logbook_entry_customer_id_idx")
+  @@index([siteId], map: "logbook_entry_site_id_idx")
   @@map("LogbookEntry")
   @@schema("public")
 }
@@ -358,12 +372,17 @@ model RecurringAppointment {
   treatment      String?       @map("treatment")
   notes          String?       @map("notes")
   durationMinutes Int          @default(60) @map("duration_minutes")
+  customerId     String?       @map("customer_id")
+  siteId         String?       @map("site_id")
   createdAt      DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt      DateTime      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   company        Company       @relation(fields: [companyId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  customer       Customer?     @relation(fields: [customerId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  site           Site?         @relation(fields: [siteId], references: [id], onDelete: SetNull, onUpdate: NoAction)
   appointments   Appointment[]
 
   @@index([companyId], map: "recurring_appointment_company_id_idx")
+  @@index([customerId], map: "recurring_appointment_customer_id_idx")
   @@map("recurring_appointment")
   @@schema("public")
 }
@@ -382,15 +401,20 @@ model Appointment {
   scheduledStart         DateTime                @map("scheduled_start") @db.Timestamptz(6)
   scheduledEnd           DateTime                @map("scheduled_end") @db.Timestamptz(6)
   status                 String                  @default("scheduled") @map("status")
+  customerId             String?                 @map("customer_id")
+  siteId                 String?                 @map("site_id")
   createdAt              DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt              DateTime                @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   company                Company                 @relation(fields: [companyId], references: [id], onDelete: Cascade, onUpdate: NoAction)
   logbookEntry           LogbookEntry?           @relation(fields: [logbookEntryId], references: [id], onDelete: SetNull, onUpdate: NoAction)
   recurringAppointment   RecurringAppointment?   @relation(fields: [recurringAppointmentId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  customer               Customer?               @relation(fields: [customerId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  site                     Site?                 @relation(fields: [siteId], references: [id], onDelete: SetNull, onUpdate: NoAction)
   appointmentTechnicians AppointmentTechnician[]
 
   @@index([companyId, scheduledStart], map: "appointment_company_scheduled_start_idx")
   @@index([recurringAppointmentId], map: "appointment_recurring_id_idx")
+  @@index([customerId], map: "appointment_customer_id_idx")
   @@map("appointment")
   @@schema("public")
 }
@@ -422,6 +446,109 @@ model TechnicianAvailability {
 
   @@index([technicianId], map: "technician_availability_technician_id_idx")
   @@map("technician_availability")
+  @@schema("public")
+}
+
+/// CRM customer record (Business+).
+model Customer {
+  id                    String                 @id @default(dbgenerated("gen_random_uuid()")) @map("id")
+  companyId             String                 @map("company_id")
+  name                  String                 @map("name")
+  email                 String?                @map("email")
+  phone                 String?                @map("phone")
+  notes                 String?                @map("notes") @db.Text
+  archivedAt            DateTime?              @map("archived_at") @db.Timestamptz(6)
+  portalEnabled         Boolean                @default(false) @map("portal_enabled")
+  portalTokenHash       String?                @map("portal_token_hash")
+  portalTokenExpiresAt  DateTime?              @map("portal_token_expires_at") @db.Timestamptz(6)
+  createdAt             DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime               @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  company               Company                @relation(fields: [companyId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  sites                 Site[]
+  logbookEntries        LogbookEntry[]
+  appointments          Appointment[]
+  recurringAppointments RecurringAppointment[]
+  invoices              Invoice[]
+
+  @@index([companyId], map: "customer_company_id_idx")
+  @@index([portalTokenHash], map: "customer_portal_token_hash_idx")
+  @@map("customer")
+  @@schema("public")
+}
+
+/// Service site under a customer (Business+).
+model Site {
+  id             String           @id @default(dbgenerated("gen_random_uuid()")) @map("id")
+  companyId      String           @map("company_id")
+  customerId     String           @map("customer_id")
+  label          String?          @map("label")
+  address        String           @map("address")
+  postcode       String?          @map("postcode")
+  accessNotes    String?          @map("access_notes") @db.Text
+  propertyType   String?          @map("property_type")
+  archivedAt     DateTime?        @map("archived_at") @db.Timestamptz(6)
+  createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  company        Company          @relation(fields: [companyId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  customer       Customer         @relation(fields: [customerId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  logbookEntries LogbookEntry[]
+  appointments   Appointment[]
+  recurringAppointments RecurringAppointment[]
+  invoices       Invoice[]
+
+  @@index([companyId], map: "site_company_id_idx")
+  @@index([customerId], map: "site_customer_id_idx")
+  @@map("site")
+  @@schema("public")
+}
+
+/// Invoice for completed work (Business+).
+model Invoice {
+  id                   String        @id @default(dbgenerated("gen_random_uuid()")) @map("id")
+  companyId            String        @map("company_id")
+  customerId           String        @map("customer_id")
+  siteId               String?       @map("site_id")
+  logbookEntryId       String?       @map("logbook_entry_id")
+  number               String        @map("number")
+  status               String        @default("draft") @map("status")
+  issuedAt             DateTime      @map("issued_at") @db.Timestamptz(6)
+  dueAt                DateTime?     @map("due_at") @db.Timestamptz(6)
+  subtotal             Decimal       @map("subtotal") @db.Decimal(10, 2)
+  vatRate              Decimal       @map("vat_rate") @db.Decimal(5, 2)
+  vatAmount            Decimal       @map("vat_amount") @db.Decimal(10, 2)
+  total                Decimal       @map("total") @db.Decimal(10, 2)
+  lineItems            Json          @map("line_items")
+  stripePaymentLinkUrl String?       @map("stripe_payment_link_url")
+  createdAt            DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  company              Company       @relation(fields: [companyId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  customer             Customer      @relation(fields: [customerId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  site                 Site?         @relation(fields: [siteId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  logbookEntry         LogbookEntry? @relation(fields: [logbookEntryId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+
+  @@unique([companyId, number], map: "invoice_company_number_key")
+  @@index([companyId], map: "invoice_company_id_idx")
+  @@index([customerId], map: "invoice_customer_id_idx")
+  @@map("invoice")
+  @@schema("public")
+}
+
+/// Compliance alert for recurring visit / follow-up gaps (Business+).
+model ComplianceAlert {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @map("id")
+  companyId  String    @map("company_id")
+  type       String    @map("type")
+  entityType String    @map("entity_type")
+  entityId   String    @map("entity_id")
+  message    String    @map("message") @db.Text
+  resolvedAt DateTime? @map("resolved_at") @db.Timestamptz(6)
+  emailedAt  DateTime? @map("emailed_at") @db.Timestamptz(6)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  company    Company   @relation(fields: [companyId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([companyId, type, entityType, entityId], map: "compliance_alert_dedupe_key")
+  @@index([companyId, resolvedAt], map: "compliance_alert_company_resolved_idx")
+  @@map("compliance_alert")
   @@schema("public")
 }
 

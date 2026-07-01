@@ -654,3 +654,95 @@ The Pest Trace team`;
     text,
   });
 }
+
+type JobCompleteSummary = {
+  clientName: string;
+  address: string;
+  postcode: string | null;
+  treatment: string;
+  date: string;
+  logbookEntryId: string;
+};
+
+export async function sendJobCompleteOwnerEmail(params: {
+  to: string;
+  companyName: string;
+  job: JobCompleteSummary;
+  idempotencyKey: string;
+}) {
+  const dateLabel = new Date(params.job.date).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' });
+  const inner = `
+    <p>A job was marked <strong>completed</strong> in Pest Trace.</p>
+    <p><strong>Customer:</strong> ${escapeHtml(params.job.clientName)}<br/>
+    <strong>Site:</strong> ${escapeHtml(params.job.address)}${params.job.postcode ? `, ${escapeHtml(params.job.postcode)}` : ''}<br/>
+    <strong>Treatment:</strong> ${escapeHtml(params.job.treatment)}<br/>
+    <strong>Completed:</strong> ${escapeHtml(dateLabel)}</p>
+    <p style="text-align:center;">
+      <a href="${appUrl}/dashboard?tab=logbook" style="background-color:#2563EB;color:white;padding:12px 24px;text-decoration:none;border-radius:8px;font-weight:bold;display:inline-block;">View logbook</a>
+    </p>
+  `;
+  const text = `Job completed for ${params.job.clientName} at ${params.job.address}. Treatment: ${params.job.treatment}. Completed: ${dateLabel}.`;
+  return sendMail({
+    to: [params.to],
+    subject: `Job completed — ${params.job.clientName}`,
+    html: brandEmailHtml('Job completed', inner),
+    text,
+    idempotencyKey: params.idempotencyKey,
+  });
+}
+
+export async function sendJobCompleteCustomerEmail(params: {
+  to: string;
+  companyName: string;
+  customerName: string;
+  job: JobCompleteSummary;
+  portalLink?: string;
+  idempotencyKey: string;
+}) {
+  const dateLabel = new Date(params.job.date).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' });
+  const portalBlock = params.portalLink
+    ? `<p style="text-align:center;margin-top:16px;">
+        <a href="${escapeHtml(params.portalLink)}" style="background-color:#2563EB;color:white;padding:12px 24px;text-decoration:none;border-radius:8px;font-weight:bold;display:inline-block;">View your service records</a>
+      </p>`
+    : '';
+  const inner = `
+    <p>Hi ${escapeHtml(params.customerName)},</p>
+    <p>${escapeHtml(params.companyName)} has completed a pest control visit at your property.</p>
+    <p><strong>Address:</strong> ${escapeHtml(params.job.address)}${params.job.postcode ? `, ${escapeHtml(params.job.postcode)}` : ''}<br/>
+    <strong>Treatment:</strong> ${escapeHtml(params.job.treatment)}<br/>
+    <strong>Date:</strong> ${escapeHtml(dateLabel)}</p>
+    ${portalBlock}
+    <p>If you have questions, reply to this email or contact ${escapeHtml(params.companyName)} directly.</p>
+  `;
+  const text = `Hi ${params.customerName}, ${params.companyName} completed a visit at ${params.job.address} on ${dateLabel}. Treatment: ${params.job.treatment}.`;
+  return sendMail({
+    to: [params.to],
+    subject: `Service completed — ${params.companyName}`,
+    html: brandEmailHtml('Service visit completed', inner),
+    text,
+    idempotencyKey: params.idempotencyKey,
+  });
+}
+
+export async function sendComplianceAlertsDigestEmail(params: {
+  to: string;
+  companyName: string;
+  alerts: string[];
+}) {
+  const list = params.alerts.map((a) => `<li>${escapeHtml(a)}</li>`).join('');
+  const inner = `
+    <p>Hi,</p>
+    <p>The following compliance items need attention for <strong>${escapeHtml(params.companyName)}</strong>:</p>
+    <ul>${list}</ul>
+    <p style="text-align:center;">
+      <a href="${appUrl}/dashboard" style="background-color:#2563EB;color:white;padding:12px 24px;text-decoration:none;border-radius:8px;font-weight:bold;display:inline-block;">Open dashboard</a>
+    </p>
+  `;
+  const text = `Compliance alerts for ${params.companyName}:\n\n${params.alerts.map((a) => `- ${a}`).join('\n')}`;
+  return sendMail({
+    to: [params.to],
+    subject: `Compliance alerts — ${params.companyName}`,
+    html: brandEmailHtml('Compliance alerts', inner),
+    text,
+  });
+}

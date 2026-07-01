@@ -1,9 +1,16 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import FormInput from '../ui/FormInput';
 import Button from '../ui/Button';
+import { supabase } from '../../lib/supabase';
 import type { AppointmentDTO, RecurrenceIntervalType, RecurrenceScope } from '../../lib/scheduling/types';
 
 type TechnicianOption = { id: string; name: string; email: string };
+
+type CustomerOption = {
+  id: string;
+  name: string;
+  sites: { id: string; label: string | null; address: string; postcode: string | null }[];
+};
 
 export default function AppointmentModal({
   open,
@@ -11,15 +18,19 @@ export default function AppointmentModal({
   initial,
   technicians,
   canWrite,
+  canUseCrm = false,
+  previewCustomers,
   onClose,
   onSave,
   onSaveRecurring,
 }: {
   open: boolean;
   mode: 'create' | 'edit';
-  initial?: Partial<AppointmentDTO> & { recurring?: boolean };
+  initial?: Partial<AppointmentDTO> & { recurring?: boolean; customerId?: string | null; siteId?: string | null };
   technicians: TechnicianOption[];
   canWrite: boolean;
+  canUseCrm?: boolean;
+  previewCustomers?: CustomerOption[];
   onClose: () => void;
   onSave: (payload: Record<string, unknown>, scope: RecurrenceScope) => Promise<void>;
   onSaveRecurring?: (payload: Record<string, unknown>) => Promise<void>;
@@ -38,6 +49,10 @@ export default function AppointmentModal({
   const [intervalDays, setIntervalDays] = useState('7');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [customers, setCustomers] = useState<CustomerOption[]>([]);
+  const [customerId, setCustomerId] = useState('');
+  const [siteId, setSiteId] = useState('');
+  const [useManualEntry, setUseManualEntry] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -52,7 +67,48 @@ export default function AppointmentModal({
     setRecurring(Boolean(initial?.recurring));
     setScope('occurrence');
     setError('');
+    setCustomerId(initial?.customerId ?? '');
+    setSiteId(initial?.siteId ?? '');
+    setUseManualEntry(false);
   }, [open, initial]);
+
+  useEffect(() => {
+    if (!open || !canUseCrm) return;
+    if (previewCustomers) {
+      setCustomers(previewCustomers);
+      return;
+    }
+    let mounted = true;
+    async function loadCustomers() {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const res = await fetch('/api/customers', {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      if (mounted) setCustomers(data.customers ?? []);
+    }
+    void loadCustomers();
+    return () => {
+      mounted = false;
+    };
+  }, [open, canUseCrm, previewCustomers]);
+
+  const sitesForCustomer = useMemo(() => {
+    const customer = customers.find((c) => c.id === customerId);
+    return customer?.sites ?? [];
+  }, [customers, customerId]);
+
+  useEffect(() => {
+    if (!canUseCrm || useManualEntry || !siteId) return;
+    const site = sitesForCustomer.find((s) => s.id === siteId);
+    if (!site) return;
+    const customer = customers.find((c) => c.id === customerId);
+    setClientName(customer?.name ?? '');
+    setAddress(site.address);
+    setPostcode(site.postcode ?? '');
+  }, [canUseCrm, useManualEntry, siteId, sitesForCustomer, customerId, customers]);
 
   if (!open || !canWrite) return null;
 
@@ -65,7 +121,7 @@ export default function AppointmentModal({
     setSaving(true);
     setError('');
     try {
-      const payload = {
+      const payload: Record<string, unknown> = {
         clientName,
         address,
         postcode: postcode || null,
@@ -75,6 +131,10 @@ export default function AppointmentModal({
         scheduledEnd: new Date(endLocal).toISOString(),
         technicianIds,
       };
+      if (canUseCrm && !useManualEntry && siteId) {
+        payload.customerId = customerId || null;
+        payload.siteId = siteId;
+      }
       if (mode === 'create' && recurring && onSaveRecurring) {
         await onSaveRecurring({
           ...payload,
@@ -94,6 +154,8 @@ export default function AppointmentModal({
     }
   };
 
+  const showCrmPicker = canUseCrm && !useManualEntry;
+
   return (
     <div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/40 p-4 sm:items-center">
       <div className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-3xl border border-zinc-200 bg-white p-6 shadow-xl">
@@ -105,9 +167,76 @@ export default function AppointmentModal({
         </div>
 
         <form className="space-y-4" onSubmit={handleSubmit}>
-          <FormInput id="sched-client-name" label="Client name" value={clientName} onChange={(e) => setClientName(e.target.value)} required />
-          <FormInput id="sched-address" label="Address" value={address} onChange={(e) => setAddress(e.target.value)} required />
-          <FormInput id="sched-postcode" label="Postcode" value={postcode} onChange={(e) => setPostcode(e.target.value)} />
+          {canUseCrm ? (
+            <div className="space-y-3 rounded-2xl border border-zinc-100 bg-zinc-50 p-4">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-sm font-medium text-slate-700">Customer & site</p>
+                <button
+                  type="button"
+                  className="text-xs font-medium text-primary-600 hover:underline"
+                  onClick={() => setUseManualEntry((v) => !v)}
+                >
+                  {useManualEntry ? 'Use CRM picker' : 'Enter manually'}
+                </button>
+              </div>
+              {showCrmPicker ? (
+                <>
+                  <label className="block text-sm text-slate-700">
+                    Customer
+                    <select
+                      className="mt-1 w-full rounded-xl border border-zinc-200 px-3 py-2"
+                      value={customerId}
+                      onChange={(e) => {
+                        setCustomerId(e.target.value);
+                        setSiteId('');
+                      }}
+                      required
+                    >
+                      <option value="">Select customer…</option>
+                      {customers.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="block text-sm text-slate-700">
+                    Site
+                    <select
+                      className="mt-1 w-full rounded-xl border border-zinc-200 px-3 py-2"
+                      value={siteId}
+                      onChange={(e) => setSiteId(e.target.value)}
+                      required
+                      disabled={!customerId}
+                    >
+                      <option value="">Select site…</option>
+                      {sitesForCustomer.map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.label ? `${s.label} — ${s.address}` : s.address}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </>
+              ) : null}
+            </div>
+          ) : null}
+
+          {(!canUseCrm || useManualEntry) && (
+            <>
+              <FormInput id="sched-client-name" label="Client name" value={clientName} onChange={(e) => setClientName(e.target.value)} required />
+              <FormInput id="sched-address" label="Address" value={address} onChange={(e) => setAddress(e.target.value)} required />
+              <FormInput id="sched-postcode" label="Postcode" value={postcode} onChange={(e) => setPostcode(e.target.value)} />
+            </>
+          )}
+
+          {showCrmPicker && siteId ? (
+            <div className="rounded-xl border border-zinc-100 bg-white px-3 py-2 text-sm text-slate-600">
+              <p className="font-medium text-slate-800">{clientName}</p>
+              <p>{address}{postcode ? `, ${postcode}` : ''}</p>
+            </div>
+          ) : null}
+
           <FormInput id="sched-treatment" label="Treatment" value={treatment} onChange={(e) => setTreatment(e.target.value)} />
           <FormInput id="sched-notes" label="Notes" value={notes} onChange={(e) => setNotes(e.target.value)} />
           <div className="grid gap-4 sm:grid-cols-2">

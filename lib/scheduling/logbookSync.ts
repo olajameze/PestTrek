@@ -1,5 +1,6 @@
 import type { PrismaClient } from '@prisma/client';
 import { recordLogbookActivationMilestones } from '../activation/companyActivation';
+import { notifyJobComplete } from '../comms/jobCompleteNotifier';
 import {
   findAppointmentById,
   updateAppointment,
@@ -30,6 +31,8 @@ export async function syncLogbookOnComplete(
         address: appointment.address,
         postcode: appointment.postcode,
         treatment,
+        ...(appointment.customerId ? { customerId: appointment.customerId } : {}),
+        ...(appointment.siteId ? { siteId: appointment.siteId } : {}),
       },
     });
     await prisma.logbookEntryTechnician.deleteMany({ where: { logbookEntryId: appointment.logbookEntryId } });
@@ -48,6 +51,9 @@ export async function syncLogbookOnComplete(
       postcode: appointment.postcode,
       status: 'completed',
     });
+    void notifyJobComplete(prisma, companyId, appointment.logbookEntryId).catch((e) =>
+      console.error('[logbookSync] job complete notify failed', e),
+    );
     return appointment.logbookEntryId;
   }
 
@@ -68,6 +74,8 @@ export async function syncLogbookOnComplete(
       treatment,
       notes: appointment.notes,
       status: 'completed',
+      ...(appointment.customerId ? { customer: { connect: { id: appointment.customerId } } } : {}),
+      ...(appointment.siteId ? { site: { connect: { id: appointment.siteId } } } : {}),
       logbookEntryTechnicians: {
         create: technicianIds.map((technicianId) => ({ technicianId })),
       },
@@ -84,6 +92,9 @@ export async function syncLogbookOnComplete(
     postcode: appointment.postcode,
     status: 'completed',
   });
+  void notifyJobComplete(prisma, companyId, entry.id).catch((e) =>
+    console.error('[logbookSync] job complete notify failed', e),
+  );
 
   return entry.id;
 }

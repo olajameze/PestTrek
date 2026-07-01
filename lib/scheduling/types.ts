@@ -72,6 +72,8 @@ export type CreateAppointmentInput = {
   scheduledEnd: string;
   technicianIds?: string[];
   logbookEntryId?: string | null;
+  customerId?: string | null;
+  siteId?: string | null;
 };
 
 export type UpdateAppointmentInput = Partial<CreateAppointmentInput> & {
@@ -96,4 +98,6 @@ export type CreateRecurringInput = {
   notes?: string | null;
   durationMinutes?: number;
   technicianIds?: string[];
+  customerId?: string | null;
+  siteId?: string | null;
 };

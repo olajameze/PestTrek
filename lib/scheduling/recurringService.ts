@@ -15,6 +15,7 @@ import {
 import { generateOccurrenceDates, toDayKey } from './recurringDates';
 import type { CreateRecurringInput, RecurrenceScope } from './types';
 import { NotFoundError } from './validation';
+import { denormalizeFromSite, getSiteWithCustomer } from '../crm/customerService';
 
 async function generateInstancesForRecurring(
   prisma: PrismaClient,
@@ -59,6 +60,8 @@ async function generateInstancesForRecurring(
       scheduledStart: occurrence,
       scheduledEnd,
       status: 'scheduled',
+      ...(recurring.customerId ? { customer: { connect: { id: recurring.customerId } } } : {}),
+      ...(recurring.siteId ? { site: { connect: { id: recurring.siteId } } } : {}),
     });
     if (technicianIds.length > 0) {
       await setAppointmentTechnicians(prisma, appointment.id, technicianIds);
@@ -80,6 +83,20 @@ export async function createRecurringSeries(
   horizonEnd.setDate(horizonEnd.getDate() + schedule.generationHorizonDays);
   const anchorStart = new Date(input.anchorStart);
 
+  let clientName = input.clientName;
+  let address = input.address;
+  let postcode = input.postcode ?? null;
+  let customerId = input.customerId ?? null;
+  let siteId = input.siteId ?? null;
+  if (siteId) {
+    const site = await getSiteWithCustomer(prisma, companyId, siteId);
+    const denorm = denormalizeFromSite(site);
+    clientName = denorm.clientName;
+    address = denorm.address;
+    postcode = denorm.postcode;
+    customerId = site.customerId;
+  }
+
   const recurring = await createRecurring(prisma, {
     company: { connect: { id: companyId } },
     intervalType: input.intervalType,
@@ -89,12 +106,14 @@ export async function createRecurringSeries(
     generatedUntil: horizonEnd,
     exceptionDates: [],
     isActive: true,
-    clientName: input.clientName,
-    address: input.address,
-    postcode: input.postcode,
+    clientName,
+    address,
+    postcode,
     treatment: input.treatment,
     notes: input.notes,
     durationMinutes: input.durationMinutes ?? schedule.defaultDurationMinutes,
+    ...(customerId ? { customer: { connect: { id: customerId } } } : {}),
+    ...(siteId ? { site: { connect: { id: siteId } } } : {}),
   });
 
   const instancesCreated = await generateInstancesForRecurring(
@@ -133,17 +152,42 @@ export async function updateRecurringSeries(
   const recurring = await findRecurringById(prisma, companyId, recurringId);
   if (!recurring) throw new NotFoundError('Recurring series not found');
 
+  let clientName = input.clientName;
+  let address = input.address;
+  let postcode = input.postcode;
+  let customerId = input.customerId;
+  let siteId = input.siteId;
+  if (input.siteId) {
+    const site = await getSiteWithCustomer(prisma, companyId, input.siteId);
+    const denorm = denormalizeFromSite(site);
+    clientName = denorm.clientName;
+    address = denorm.address;
+    postcode = denorm.postcode;
+    customerId = site.customerId;
+    siteId = site.id;
+  }
+
   await updateRecurring(prisma, recurringId, {
     intervalType: input.intervalType ?? undefined,
     intervalDays: input.intervalDays ?? undefined,
     anchorStart: input.anchorStart ? new Date(input.anchorStart) : undefined,
     endsAt: input.endsAt === undefined ? undefined : input.endsAt ? new Date(input.endsAt) : null,
-    clientName: input.clientName ?? undefined,
-    address: input.address ?? undefined,
-    postcode: input.postcode ?? undefined,
+    clientName: clientName ?? undefined,
+    address: address ?? undefined,
+    postcode: postcode ?? undefined,
     treatment: input.treatment ?? undefined,
     notes: input.notes ?? undefined,
     durationMinutes: input.durationMinutes ?? undefined,
+    ...(customerId !== undefined
+      ? customerId
+        ? { customer: { connect: { id: customerId } } }
+        : { customer: { disconnect: true } }
+      : {}),
+    ...(siteId !== undefined
+      ? siteId
+        ? { site: { connect: { id: siteId } } }
+        : { site: { disconnect: true } }
+      : {}),
   });
 
   const from = input.anchorStart ? new Date(input.anchorStart) : recurring.anchorStart;

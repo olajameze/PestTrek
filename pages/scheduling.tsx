@@ -7,9 +7,12 @@ import Sidebar from '../components/sidebar';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import { Skeleton } from '../components/ui/Skeleton';
+import DevPreviewBanner from '../components/dev/DevPreviewBanner';
 import { hasSubscriptionAccess } from '../lib/subscriptionAccess';
 import { isCompanyOwnerSession } from '../lib/auth/resolveWorkspaceRoute';
 import { canUseSmartScheduling } from '../lib/scheduling/planAccess';
+import { canUseBusinessFeatures } from '../lib/businessFeatures/planAccess';
+import { isDevPreviewMode, PREVIEW_COMPANY } from '../lib/devPreview';
 import { usePermissions } from '../hooks/usePermissions';
 
 const SchedulingCalendar = dynamic(() => import('../components/scheduling/SchedulingCalendar'), {
@@ -28,14 +31,31 @@ type CompanySnapshot = {
 export default function SchedulingPage() {
   const router = useRouter();
   const permissions = usePermissions();
+  const isPreviewMode = router.isReady && isDevPreviewMode(router.query);
   const [loading, setLoading] = useState(true);
   const [company, setCompany] = useState<CompanySnapshot | null>(null);
   const [role, setRole] = useState<'owner' | 'technician'>('owner');
 
   useEffect(() => {
+    if (!router.isReady) return;
     let mounted = true;
 
     async function load() {
+      if (isPreviewMode) {
+        if (mounted) {
+          setCompany({
+            id: PREVIEW_COMPANY.id,
+            plan: PREVIEW_COMPANY.plan,
+            subscriptionStatus: PREVIEW_COMPANY.subscriptionStatus,
+            trialEndsAt: PREVIEW_COMPANY.trialEndsAt,
+            paymentGraceEndsAt: PREVIEW_COMPANY.paymentGraceEndsAt,
+          });
+          setRole('owner');
+          setLoading(false);
+        }
+        return;
+      }
+
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         router.replace('/auth/signin');
@@ -92,16 +112,18 @@ export default function SchedulingPage() {
     return () => {
       mounted = false;
     };
-  }, [router]);
+  }, [router, router.isReady, isPreviewMode]);
 
-  const canWrite = permissions.can('write', 'scheduling');
-  const hasAccess = company ? hasSubscriptionAccess(company) : false;
-  const hasScheduling = company ? canUseSmartScheduling(company.plan) : false;
+  const hasAccess = isPreviewMode || (company ? hasSubscriptionAccess(company) : false);
+  const hasScheduling = isPreviewMode || (company ? canUseSmartScheduling(company.plan) : false);
+  const canUseCrm = isPreviewMode || (company ? canUseBusinessFeatures(company.plan) && hasAccess : false);
+  const canWrite = isPreviewMode || permissions.can('write', 'scheduling');
 
   return (
     <div className="min-h-screen bg-slate-50">
+      {isPreviewMode ? <DevPreviewBanner /> : null}
       <div className="flex">
-        <Sidebar activeTab="scheduling" role={role} />
+        <Sidebar activeTab="scheduling" role={role} previewMode={isPreviewMode} />
         <main className="min-h-screen flex-1 p-4 pt-20 lg:ml-64 lg:p-8 lg:pt-8">
           {loading ? (
             <Skeleton className="h-[720px] w-full" />
@@ -124,7 +146,7 @@ export default function SchedulingPage() {
               </Link>
             </Card>
           ) : (
-            <SchedulingCalendar canWrite={canWrite} />
+            <SchedulingCalendar canWrite={canWrite} canUseCrm={canUseCrm} previewMode={isPreviewMode} />
           )}
         </main>
       </div>

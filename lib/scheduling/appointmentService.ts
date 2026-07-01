@@ -21,6 +21,7 @@ import type {
   UpdateAppointmentInput,
 } from './types';
 import { ForbiddenError, NotFoundError } from './validation';
+import { denormalizeFromSite, getSiteWithCustomer } from '../crm/customerService';
 
 async function validateTechnicians(
   prisma: PrismaClient,
@@ -74,16 +75,32 @@ export async function createScheduledAppointment(
   await validateTechnicians(prisma, companyId, technicianIds);
   await assertNoTechnicianConflicts(prisma, companyId, technicianIds, start, end);
 
+  let clientName = input.clientName;
+  let address = input.address;
+  let postcode = input.postcode ?? null;
+  let customerId = input.customerId ?? null;
+  let siteId = input.siteId ?? null;
+  if (siteId) {
+    const site = await getSiteWithCustomer(prisma, companyId, siteId);
+    const denorm = denormalizeFromSite(site);
+    clientName = denorm.clientName;
+    address = denorm.address;
+    postcode = denorm.postcode;
+    customerId = site.customerId;
+  }
+
   const row = await createAppointment(prisma, {
     company: { connect: { id: companyId } },
-    clientName: input.clientName,
-    address: input.address,
-    postcode: input.postcode,
+    clientName,
+    address,
+    postcode,
     treatment: input.treatment,
     notes: input.notes,
     scheduledStart: start,
     scheduledEnd: end,
     status: 'scheduled',
+    ...(customerId ? { customer: { connect: { id: customerId } } } : {}),
+    ...(siteId ? { site: { connect: { id: siteId } } } : {}),
     ...(input.logbookEntryId
       ? { logbookEntry: { connect: { id: input.logbookEntryId } } }
       : {}),

@@ -21,10 +21,21 @@ import {
   moveAppointment,
   updateAppointment,
 } from '../../lib/api/schedulingClient';
+import { buildPreviewAppointments, PREVIEW_CUSTOMERS, PREVIEW_COMPANY, PREVIEW_TECHNICIANS } from '../../lib/devPreview';
+import { useToast } from '../ui/ToastProvider';
 
 type TechnicianOption = { id: string; name: string; email: string };
 
-export default function SchedulingCalendar({ canWrite }: { canWrite: boolean }) {
+export default function SchedulingCalendar({
+  canWrite,
+  canUseCrm = false,
+  previewMode = false,
+}: {
+  canWrite: boolean;
+  canUseCrm?: boolean;
+  previewMode?: boolean;
+}) {
+  const { showToast } = useToast();
   const [view, setView] = useState<CalendarView>('week');
   const [anchor, setAnchor] = useState(() => new Date());
   const [appointments, setAppointments] = useState<AppointmentDTO[]>([]);
@@ -40,6 +51,15 @@ export default function SchedulingCalendar({ canWrite }: { canWrite: boolean }) 
   const load = useCallback(async () => {
     setLoading(true);
     try {
+      if (previewMode) {
+        setAppointments(buildPreviewAppointments());
+        setTechnicians(PREVIEW_TECHNICIANS);
+        setWorkload([
+          { technicianId: 'tech-1', name: 'John Smith', appointmentCount: 2, totalMinutes: 120 },
+          { technicianId: 'tech-2', name: 'Sarah Johnson', appointmentCount: 1, totalMinutes: 60 },
+        ]);
+        return;
+      }
       const [calendar, techs] = await Promise.all([fetchCalendar(view, anchor), fetchTechnicians()]);
       setAppointments(calendar.appointments);
       setTechnicians(techs);
@@ -54,7 +74,7 @@ export default function SchedulingCalendar({ canWrite }: { canWrite: boolean }) 
     } finally {
       setLoading(false);
     }
-  }, [view, anchor, range]);
+  }, [view, anchor, range, previewMode]);
 
   useEffect(() => {
     void load();
@@ -96,6 +116,17 @@ export default function SchedulingCalendar({ canWrite }: { canWrite: boolean }) 
     try {
       const start = arg.event.start ?? new Date(appt.scheduledStart);
       const end = arg.event.end ?? new Date(appt.scheduledEnd);
+      if (previewMode) {
+        setAppointments((prev) =>
+          prev.map((item) =>
+            item.id === appt.id
+              ? { ...item, scheduledStart: start.toISOString(), scheduledEnd: end.toISOString() }
+              : item,
+          ),
+        );
+        showToast('Preview mode', 'Appointment moved locally.', 'info');
+        return;
+      }
       await moveAppointment(appt.id, {
         scheduledStart: start.toISOString(),
         scheduledEnd: end.toISOString(),
@@ -200,6 +231,14 @@ export default function SchedulingCalendar({ canWrite }: { canWrite: boolean }) 
             onDelete={() => setDeleteOpen(true)}
             onComplete={async () => {
               if (!selected) return;
+              if (previewMode) {
+                setAppointments((prev) =>
+                  prev.map((item) => (item.id === selected.id ? { ...item, status: 'completed' as const } : item)),
+                );
+                setSelected(null);
+                showToast('Preview mode', 'Marked complete locally.', 'success');
+                return;
+              }
               await updateAppointment(selected.id, { status: 'completed' });
               await load();
               setSelected(null);
@@ -216,8 +255,65 @@ export default function SchedulingCalendar({ canWrite }: { canWrite: boolean }) 
         initial={selected ?? undefined}
         technicians={technicians}
         canWrite={canWrite}
+        canUseCrm={canUseCrm}
+        previewCustomers={previewMode ? PREVIEW_CUSTOMERS : undefined}
         onClose={() => setModalOpen(false)}
         onSave={async (payload, scope) => {
+          if (previewMode) {
+            const techs = PREVIEW_TECHNICIANS.filter((t) =>
+              Array.isArray(payload.technicianIds) ? (payload.technicianIds as string[]).includes(t.id) : false,
+            );
+            if (modalMode === 'create') {
+              const id = `appt-preview-${Date.now()}`;
+              setAppointments((prev) => [
+                ...prev,
+                {
+                  id,
+                  companyId: PREVIEW_COMPANY.id,
+                  logbookEntryId: null,
+                  recurringAppointmentId: null,
+                  clientName: String(payload.clientName ?? ''),
+                  address: String(payload.address ?? ''),
+                  postcode: (payload.postcode as string | null) ?? null,
+                  treatment: (payload.treatment as string | null) ?? null,
+                  notes: (payload.notes as string | null) ?? null,
+                  scheduledStart: String(payload.scheduledStart),
+                  scheduledEnd: String(payload.scheduledEnd),
+                  status: 'scheduled',
+                  technicians: techs,
+                  createdAt: new Date().toISOString(),
+                  updatedAt: new Date().toISOString(),
+                },
+              ]);
+            } else if (selected) {
+              setAppointments((prev) =>
+                prev.map((item) =>
+                  item.id === selected.id
+                    ? {
+                        ...item,
+                        clientName: String(payload.clientName ?? item.clientName),
+                        address: String(payload.address ?? item.address),
+                        postcode:
+                          payload.postcode === undefined
+                            ? item.postcode
+                            : (payload.postcode as string | null),
+                        treatment:
+                          payload.treatment === undefined
+                            ? item.treatment
+                            : (payload.treatment as string | null),
+                        notes:
+                          payload.notes === undefined ? item.notes : (payload.notes as string | null),
+                        scheduledStart: String(payload.scheduledStart ?? item.scheduledStart),
+                        scheduledEnd: String(payload.scheduledEnd ?? item.scheduledEnd),
+                        technicians: techs.length > 0 ? techs : item.technicians,
+                      }
+                    : item,
+                ),
+              );
+            }
+            showToast('Preview mode', 'Appointment saved locally.', 'success');
+            return;
+          }
           if (modalMode === 'create') {
             await createAppointment(payload as never);
           } else if (selected) {
@@ -226,6 +322,31 @@ export default function SchedulingCalendar({ canWrite }: { canWrite: boolean }) 
           await load();
         }}
         onSaveRecurring={async (payload) => {
+          if (previewMode) {
+            showToast('Preview mode', 'Recurring series saved locally (single occurrence shown).', 'success');
+            const id = `appt-rec-preview-${Date.now()}`;
+            setAppointments((prev) => [
+              ...prev,
+              {
+                id,
+                companyId: PREVIEW_COMPANY.id,
+                logbookEntryId: null,
+                recurringAppointmentId: 'rec-preview',
+                clientName: String(payload.clientName ?? ''),
+                address: String(payload.address ?? ''),
+                postcode: (payload.postcode as string | null) ?? null,
+                treatment: (payload.treatment as string | null) ?? null,
+                notes: (payload.notes as string | null) ?? null,
+                scheduledStart: String(payload.scheduledStart),
+                scheduledEnd: String(payload.scheduledEnd),
+                status: 'scheduled',
+                technicians: PREVIEW_TECHNICIANS.slice(0, 1),
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+              },
+            ]);
+            return;
+          }
           await createRecurringSeries(payload as never);
           await load();
         }}
@@ -237,6 +358,12 @@ export default function SchedulingCalendar({ canWrite }: { canWrite: boolean }) 
         onClose={() => setDeleteOpen(false)}
         onConfirm={async (scope: RecurrenceScope) => {
           if (!selected) return;
+          if (previewMode) {
+            setAppointments((prev) => prev.filter((item) => item.id !== selected.id));
+            setSelected(null);
+            showToast('Preview mode', 'Appointment removed locally.', 'info');
+            return;
+          }
           await deleteAppointment(selected.id, scope);
           await load();
           setSelected(null);

@@ -14,11 +14,21 @@ type NotificationPreferences = {
   certificationExpiry: boolean;
   digestDaily?: boolean;
   digestWeekly?: boolean;
-  enterprise?: {
+  business?: {
+    jobCompleteEmailToOwner?: boolean;
+    jobCompleteEmailToCustomer?: boolean;
+  };
+    enterprise?: {
     accountManager?: {
       name?: string;
       email?: string;
       phone?: string;
+    };
+    branding?: {
+      primaryColor?: string;
+      footerText?: string;
+      portalWelcomeText?: string;
+      logoUrl?: string;
     };
     security?: {
       ipAllowlistEnabled?: boolean;
@@ -112,6 +122,12 @@ export default function SettingsTab({
     digestDaily: company.notificationPreferences?.digestDaily ?? false,
     digestWeekly: company.notificationPreferences?.digestWeekly ?? true,
   });
+  const [jobCompleteEmailToOwner, setJobCompleteEmailToOwner] = useState(
+    company.notificationPreferences?.business?.jobCompleteEmailToOwner ?? true,
+  );
+  const [jobCompleteEmailToCustomer, setJobCompleteEmailToCustomer] = useState(
+    company.notificationPreferences?.business?.jobCompleteEmailToCustomer ?? false,
+  );
   const [accountManagerName, setAccountManagerName] = useState(
     company.notificationPreferences?.enterprise?.accountManager?.name || '',
   );
@@ -129,6 +145,15 @@ export default function SettingsTab({
   );
   const [requireVerifiedEmail, setRequireVerifiedEmail] = useState(
     company.notificationPreferences?.enterprise?.security?.requireVerifiedEmail ?? true,
+  );
+  const [brandPrimaryColor, setBrandPrimaryColor] = useState(
+    company.notificationPreferences?.enterprise?.branding?.primaryColor ?? '#2563EB',
+  );
+  const [brandFooterText, setBrandFooterText] = useState(
+    company.notificationPreferences?.enterprise?.branding?.footerText ?? '',
+  );
+  const [portalWelcomeText, setPortalWelcomeText] = useState(
+    company.notificationPreferences?.enterprise?.branding?.portalWelcomeText ?? '',
   );
 
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -202,6 +227,10 @@ export default function SettingsTab({
       defaultReportRangeDays,
       notificationPreferences: {
         ...notificationPreferences,
+        business: {
+          jobCompleteEmailToOwner,
+          jobCompleteEmailToCustomer,
+        },
         enterprise: {
           accountManager: {
             name: accountManagerName.trim(),
@@ -212,6 +241,12 @@ export default function SettingsTab({
             ipAllowlistEnabled,
             allowedIps,
             requireVerifiedEmail,
+          },
+          branding: {
+            primaryColor: brandPrimaryColor.trim() || '#2563EB',
+            footerText: brandFooterText.trim(),
+            portalWelcomeText: portalWelcomeText.trim(),
+            logoUrl: company.notificationPreferences?.enterprise?.branding?.logoUrl ?? '',
           },
         },
       },
@@ -427,6 +462,18 @@ export default function SettingsTab({
               <span className="text-sm text-slate-700">Weekly digest email</span>
             </label>
           </div>
+          {(subscription?.plan === 'business' || subscription?.plan === 'enterprise') ? (
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <label className="inline-flex items-center gap-3 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+                <input type="checkbox" checked={jobCompleteEmailToOwner} onChange={(e) => setJobCompleteEmailToOwner(e.target.checked)} className="h-4 w-4 rounded border-zinc-300 text-primary-600" />
+                <span className="text-sm text-slate-700">Email me when a job is completed</span>
+              </label>
+              <label className="inline-flex items-center gap-3 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+                <input type="checkbox" checked={jobCompleteEmailToCustomer} onChange={(e) => setJobCompleteEmailToCustomer(e.target.checked)} className="h-4 w-4 rounded border-zinc-300 text-primary-600" />
+                <span className="text-sm text-slate-700">Email customer when job is completed</span>
+              </label>
+            </div>
+          ) : null}
           <WebPushSettings />
         </section>
 
@@ -459,6 +506,27 @@ export default function SettingsTab({
                 value={accountManagerPhone}
                 onChange={(e) => setAccountManagerPhone(e.target.value)}
                 placeholder="+44 0000 000000"
+              />
+              <FormInput
+                label="Report primary colour (hex)"
+                id="settings-brand-color"
+                value={brandPrimaryColor}
+                onChange={(e) => setBrandPrimaryColor(e.target.value)}
+                placeholder="#2563EB"
+              />
+              <FormInput
+                label="Report footer text"
+                id="settings-brand-footer"
+                value={brandFooterText}
+                onChange={(e) => setBrandFooterText(e.target.value)}
+                placeholder="Thank you for choosing us"
+              />
+              <FormInput
+                label="Client portal welcome text"
+                id="settings-portal-welcome"
+                value={portalWelcomeText}
+                onChange={(e) => setPortalWelcomeText(e.target.value)}
+                placeholder="View your service history"
               />
               <div className="rounded-2xl border border-zinc-200 bg-white p-4">
                 <p className="text-xs uppercase tracking-[0.24em] text-slate-500">Advanced security</p>
