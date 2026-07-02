@@ -1,6 +1,5 @@
 import Head from 'next/head';
 import Link from 'next/link';
-import type { GetServerSideProps } from 'next';
 import PWAInstallPrompt from '../components/PWAInstallPrompt';
 import LandingFooter from '../components/landing/LandingFooter';
 import LandingNav from '../components/landing/LandingNav';
@@ -19,11 +18,7 @@ import {
   LANDING_PAGE_TITLE,
   MARKETING_SITE_ORIGIN,
 } from '../lib/seo/landing';
-import { getLandingPricingServerSideProps } from '../lib/marketing/landingPricingProps';
-import type { LandingPricingProps } from '../lib/geoCurrency';
 import { FadeIn } from '../components/landing/ProductVisual';
-
-export const getServerSideProps: GetServerSideProps<LandingPricingProps> = getLandingPricingServerSideProps;
 
 export default function Home() {
   return (
