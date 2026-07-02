@@ -7,13 +7,17 @@ import PWAInstallPrompt from '../components/PWAInstallPrompt';
 import LandingFooter from '../components/landing/LandingFooter';
 import SuggestionsSection from '../components/landing/SuggestionsSection';
 import LandingFAQ from '../components/landing/LandingFAQ';
+import SocialProofSection from '../components/landing/SocialProofSection';
+import ProductProofSection from '../components/landing/ProductProofSection';
+import IcpSplitSection from '../components/landing/IcpSplitSection';
 import {
   featureCards,
   pricingPlans,
   trustMicrocopy,
   regulationUrgency,
-  testimonials,
   teamRoleHighlights,
+  heroCopy,
+  bottomCtaCopy,
 } from '../components/landing/content';
 import {
   buildLandingJsonLd,
@@ -120,7 +124,7 @@ const ProductVisual = ({ type }: { type: string }) => {
   return null;
 };
 
-export default function Home({ pricingAmountLabels, pricingFxNote }: LandingPricingProps) {
+export default function Home({ pricingGbpLabels, pricingApproxLabels, pricingFxNote }: LandingPricingProps) {
   return (
     <div className="min-h-screen bg-white font-sans text-slate-900 selection:bg-emerald-100 selection:text-emerald-900">
       <Head>
@@ -166,7 +170,9 @@ export default function Home({ pricingAmountLabels, pricingFxNote }: LandingPric
         </Link>
         <div className="hidden md:flex space-x-10 font-medium text-slate-500">
           <a href="#features" className="hover:text-slate-900 transition">Features</a>
+          <a href="#product-proof" className="hover:text-slate-900 transition">Product</a>
           <a href="#teams" className="hover:text-slate-900 transition">For your team</a>
+          <Link href="/blog" className="hover:text-slate-900 transition">Blog</Link>
           <a href="#pricing" className="hover:text-slate-900 transition">Pricing</a>
           <a href="#faq" className="hover:text-slate-900 transition">FAQ</a>
         </div>
@@ -204,21 +210,21 @@ export default function Home({ pricingAmountLabels, pricingFxNote }: LandingPric
       <FadeIn>
         <header className="mx-auto max-w-5xl px-4 pb-24 pt-20 text-center sm:px-6">
           <h1 className="mb-8 text-4xl font-black leading-[1.08] tracking-tight sm:text-5xl lg:text-7xl xl:text-8xl">
-            Stay Audit-Ready. Prove Every Job. Eliminate Paperwork.
+            {heroCopy.title}
           </h1>
           <p className="mx-auto mb-12 max-w-2xl text-lg leading-relaxed text-slate-500 sm:text-xl md:text-2xl">
-            PestTrace is the compliance and job tracking platform built for pest control businesses. Log jobs, store certifications, and generate audit-ready reports — all in one place.
+            {heroCopy.subtitle}
           </p>
           <div className="flex flex-col justify-center gap-4 sm:flex-row">
             <Link href="/auth/signup" className="rounded-2xl bg-emerald-500 px-6 py-4 text-lg font-bold text-white shadow-xl shadow-emerald-200 transition-all hover:-translate-y-1 hover:bg-emerald-600 sm:px-10 sm:py-5 sm:text-xl">
-              Start Free Trial
+              {heroCopy.primaryCta}
             </Link>
-            <a href="#features" className="rounded-2xl bg-slate-50 px-6 py-4 text-lg font-bold text-slate-900 transition hover:bg-slate-100 sm:px-10 sm:py-5 sm:text-xl">
-              See How It Works
+            <a href="#product-proof" className="rounded-2xl bg-slate-50 px-6 py-4 text-lg font-bold text-slate-900 transition hover:bg-slate-100 sm:px-10 sm:py-5 sm:text-xl">
+              {heroCopy.secondaryCta}
             </a>
           </div>
           <div className="mt-6 text-sm font-medium text-slate-500">
-            ✔ 7-day free trial • ✔ No contracts • ✔ Works for pest control businesses worldwide
+            ✔ 7-day free trial • ✔ No contracts • ✔ {heroCopy.priceHint}
           </div>
           <div className="mt-8 flex flex-wrap justify-center gap-4 text-sm font-medium text-slate-400 sm:gap-6">
             {trustMicrocopy.map(item => <span key={item} className="flex items-center gap-1.5"><span className="text-emerald-500">✓</span> {item}</span>)}
@@ -239,6 +245,8 @@ export default function Home({ pricingAmountLabels, pricingFxNote }: LandingPric
           </div>
         </FadeIn>
       </section>
+
+      <ProductProofSection />
 
       {/* Business vs technician */}
       <section id="teams" className="border-y border-slate-100 bg-slate-50 py-24 px-6">
@@ -295,7 +303,22 @@ export default function Home({ pricingAmountLabels, pricingFxNote }: LandingPric
             </div>
             <div className="flex-1 w-full">
               <FadeIn delay={0.2}>
-                <ProductVisual type={feature.visual} />
+                {'screenshots' in feature && feature.screenshots?.length ? (
+                  <div className="space-y-4">
+                    {feature.screenshots.map((shot) => (
+                      <Image
+                        key={shot.src}
+                        src={shot.src}
+                        alt={shot.alt}
+                        width={1200}
+                        height={750}
+                        className="w-full rounded-xl border border-slate-200 shadow-xl"
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <ProductVisual type={feature.visual} />
+                )}
               </FadeIn>
             </div>
           </div>
@@ -313,47 +336,29 @@ export default function Home({ pricingAmountLabels, pricingFxNote }: LandingPric
         </FadeIn>
       </section>
 
-      {/* Testimonial */}
-      <section className="py-24 px-6">
+      <SocialProofSection />
+
+      <section className="px-6 py-24">
         <FadeIn>
-          <div className="text-center mb-12">
-            <h2 className="text-xl font-bold text-slate-400 uppercase tracking-widest">
-              Trusted by pest control professionals
-            </h2>
-          </div>
-          <div className="max-w-3xl mx-auto bg-slate-900 rounded-[2.5rem] p-10 md:p-14 text-center text-white relative overflow-hidden shadow-2xl">
-            <div className="absolute top-0 left-0 w-32 h-32 bg-emerald-500/10 blur-3xl rounded-full -translate-x-1/2 -translate-y-1/2" />
-            <blockquote className="text-base md:text-lg font-normal mb-8 leading-relaxed italic text-slate-300">
-              &ldquo;{testimonials[0].quote}&rdquo;
-            </blockquote>
-            <div className="flex flex-col items-center justify-center gap-6">
-              <a 
-                href="https://weatherspestsolutions.co.uk/" 
-                target="_blank" 
-                rel="noopener noreferrer" 
-                className="hover:scale-105 transition-transform bg-white p-3 rounded-2xl shadow-lg"
-              >
-                <Image 
-                  src={testimonials[0].logo} 
-                  alt={testimonials[0].company} 
-                  width={140} 
-                  height={50} 
-                  className="h-10 w-auto object-contain"
-                />
-              </a>
-              <div className="text-center space-y-1">
-                <div className="font-semibold text-white tracking-tight">{testimonials[0].author}</div>
-                <div className="text-emerald-500 font-bold text-[10px] uppercase tracking-[0.2em]">{testimonials[0].role}</div>
-              </div>
-            </div>
-          </div>
-          <div className="mt-10 text-center">
-            <p className="text-slate-500 font-medium italic">
-              ⭐ Join early users already switching to digital compliance
+          <div className="mx-auto max-w-5xl rounded-3xl bg-slate-900 p-8 text-center text-white sm:p-12">
+            <h2 className="text-3xl font-extrabold sm:text-5xl">{bottomCtaCopy.title}</h2>
+            <p className="mx-auto mt-5 max-w-3xl text-lg leading-relaxed text-slate-300">
+              {bottomCtaCopy.subtitle}
             </p>
+            <div className="mt-8 flex flex-col justify-center gap-4 sm:flex-row">
+              <Link href="/auth/signup" className="rounded-2xl bg-emerald-500 px-8 py-4 text-lg font-bold text-white transition hover:bg-emerald-600">
+                {bottomCtaCopy.primaryCta}
+              </Link>
+              <Link href="/contact" className="rounded-2xl bg-slate-100 px-8 py-4 text-lg font-bold text-slate-900 transition hover:bg-white">
+                {bottomCtaCopy.secondaryCta}
+              </Link>
+            </div>
+            <p className="mt-8 text-xs font-bold tracking-[0.35em] text-emerald-300">VERIFY. RECORD. COMPLY.</p>
           </div>
         </FadeIn>
       </section>
+
+      <IcpSplitSection />
 
       {/* Pricing */}
       <section id="pricing" className="py-32 px-6 bg-slate-50">
@@ -370,8 +375,15 @@ export default function Home({ pricingAmountLabels, pricingFxNote }: LandingPric
                   <h3 className="text-xl font-bold mb-2">{plan.name}</h3>
                   <p className="mb-4 text-sm font-medium leading-relaxed text-slate-500">{plan.bestFor}</p>
                   <div className="mb-6">
-                    <span className="text-4xl font-black sm:text-5xl">{pricingAmountLabels[idx] ?? `£${plan.price}`}</span>
-                    <span className="text-slate-400 text-sm">{plan.cadence}</span>
+                    <div>
+                      <span className="text-4xl font-black sm:text-5xl">
+                        {pricingGbpLabels[idx] ?? `£${plan.price}`}
+                      </span>
+                      <span className="text-slate-400 text-sm">{plan.cadence}</span>
+                    </div>
+                    {pricingApproxLabels[idx] ? (
+                      <p className="mt-1 text-sm font-medium text-slate-400">{pricingApproxLabels[idx]}</p>
+                    ) : null}
                   </div>
                   <Link
                     href={plan.href}
@@ -396,26 +408,6 @@ export default function Home({ pricingAmountLabels, pricingFxNote }: LandingPric
             {pricingFxNote ? ` ${pricingFxNote}` : ''}
           </p>
         </div>
-      </section>
-
-      <section className="px-6 py-24">
-        <FadeIn>
-          <div className="mx-auto max-w-5xl rounded-3xl bg-slate-900 p-8 text-center text-white sm:p-12">
-            <h2 className="text-3xl font-extrabold sm:text-5xl">Get compliant. Stay organised. Grow your business.</h2>
-            <p className="mx-auto mt-5 max-w-3xl text-lg leading-relaxed text-slate-300">
-              Join pest control professionals who are moving to a smarter, digital way of working.
-            </p>
-            <div className="mt-8 flex flex-col justify-center gap-4 sm:flex-row">
-              <Link href="/auth/signup" className="rounded-2xl bg-emerald-500 px-8 py-4 text-lg font-bold text-white transition hover:bg-emerald-600">
-                Start Free Trial
-              </Link>
-              <Link href="/contact" className="rounded-2xl bg-slate-100 px-8 py-4 text-lg font-bold text-slate-900 transition hover:bg-white">
-                Get Early Access
-              </Link>
-            </div>
-            <p className="mt-8 text-xs font-bold tracking-[0.35em] text-emerald-300">VERIFY. RECORD. COMPLY.</p>
-          </div>
-        </FadeIn>
       </section>
 
       <LandingFAQ />

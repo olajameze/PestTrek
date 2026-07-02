@@ -1,4 +1,5 @@
 import { landingFaqs, pricingPlans } from '../../components/landing/content';
+import { MARKETING_STARTING_PRICE_LABEL } from '../marketing/pricing';
 
 /** Canonical marketing origin — keep in sync with Vercel NEXT_PUBLIC_SITE_URL. */
 export const MARKETING_SITE_ORIGIN = 'https://www.pesttrace.com';
@@ -7,7 +8,7 @@ export const LANDING_PAGE_TITLE =
   'PestTrace – Pest Control Compliance Software UK | Digital Logbook & Audit Reports';
 
 export const LANDING_META_DESCRIPTION =
-  'Pest control compliance software for UK businesses. Digital logbook for technicians, audit-ready reports, certification tracking, and owner dashboards. 7-day free trial from £25/month.';
+  `Digital compliance logbook for UK pest control businesses. Technicians log jobs on site; owners track certifications and export audit-ready reports. 7-day free trial from ${MARKETING_STARTING_PRICE_LABEL}.`;
 
 export const LANDING_KEYWORDS = [
   'pest control compliance software',

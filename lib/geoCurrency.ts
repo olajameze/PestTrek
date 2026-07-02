@@ -1,9 +1,13 @@
 import type { IncomingHttpHeaders } from 'node:http';
 import { pricingPlans } from '../components/landing/content';
+import { formatGbpPrice } from './marketing/pricing';
 
 /** Serializable props for the landing page pricing block (Pages Router). */
 export type LandingPricingProps = {
-  pricingAmountLabels: string[];
+  /** Primary display — always GBP. */
+  pricingGbpLabels: string[];
+  /** Secondary approx local amount per tier; null for UK/GBP visitors. */
+  pricingApproxLabels: (string | null)[];
   pricingCurrency: string;
   pricingCountry: string;
   /** Extra footnote when showing converted amounts (non-GBP). */
@@ -125,22 +129,33 @@ function vercelCountry(headers: IncomingHttpHeaders): string {
   return typeof v === 'string' ? v.trim().toUpperCase() : '';
 }
 
+function formatApproxLocalLine(gbpAmount: number, currency: string): string {
+  const converted = formatMonthlyAmount(gbpAmount, currency);
+  return `approx ${converted} ${currency}`;
+}
+
 /**
- * Builds formatted monthly price strings for each landing tier using Vercel geo when present.
+ * Builds formatted monthly price strings for each landing tier.
+ * GBP is always primary; non-UK visitors get a secondary approx local line.
  */
 export function buildLandingPricingFromRequest(headers: IncomingHttpHeaders): LandingPricingProps {
   const country = vercelCountry(headers);
   const pricingCurrency = currencyFromCountry(country);
   const gbpAmounts = pricingPlans.map((p) => Number.parseFloat(p.price) || 0);
-  const pricingAmountLabels = gbpAmounts.map((gbp) => formatMonthlyAmount(gbp, pricingCurrency));
+  const pricingGbpLabels = gbpAmounts.map((gbp) => formatGbpPrice(gbp));
+  const pricingApproxLabels =
+    pricingCurrency === 'GBP'
+      ? gbpAmounts.map(() => null)
+      : gbpAmounts.map((gbp) => formatApproxLocalLine(gbp, pricingCurrency));
 
   const pricingFxNote =
     pricingCurrency === 'GBP'
       ? null
-      : `Approximate ${pricingCurrency} display based on your region (${country || 'unknown'}). Subscriptions are billed in GBP through Stripe unless multi-currency prices are configured.`;
+      : 'Approximate local amounts shown for reference. Subscriptions are billed in GBP through Stripe.';
 
   return {
-    pricingAmountLabels,
+    pricingGbpLabels,
+    pricingApproxLabels,
     pricingCurrency,
     pricingCountry: country,
     pricingFxNote,

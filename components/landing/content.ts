@@ -1,4 +1,22 @@
 import { MARKETING_PLAN_FEATURES } from '../../lib/marketingPlanFeatures';
+import { MARKETING_STARTING_PRICE_LABEL } from '../../lib/marketing/pricing';
+
+export const heroCopy = {
+  title: 'Stop scrambling for audit records. Prove every job in minutes.',
+  subtitle:
+    'PestTrace is the digital compliance logbook for pest control businesses. Technicians log jobs on site, owners track certifications and gaps, and you export audit-ready reports — without the paperwork backlog.',
+  priceHint: `Plans from ${MARKETING_STARTING_PRICE_LABEL}`,
+  primaryCta: 'Start Free Trial',
+  secondaryCta: 'See How It Works',
+};
+
+export const bottomCtaCopy = {
+  title: 'Be audit-ready before the inspector calls.',
+  subtitle:
+    'Replace paper logbooks and scattered spreadsheets with one record system your technicians will actually use in the field.',
+  primaryCta: 'Start Free Trial',
+  secondaryCta: 'Contact sales',
+};
 
 /** Three product stories — each visual once (no duplicate mockups). */
 export const featureCards = [
@@ -6,6 +24,12 @@ export const featureCards = [
     title: 'Log jobs and proof in the field',
     body: 'Capture treatments, photos, e-signatures, follow-ups, and site notes from any device. Technicians use a streamlined flow; owners see the same record instantly.',
     visual: 'mobile-app-ui',
+    screenshots: [
+      {
+        src: '/marketing/treatment-logbook.png',
+        alt: 'PestTrace treatment logbook for field job records and compliance exports',
+      },
+    ],
   },
   {
     title: 'Certificates, reports, and audit evidence',
@@ -16,6 +40,16 @@ export const featureCards = [
     title: 'One dashboard for operations — and growth on higher tiers',
     body: 'Schedule, compliance gaps, chemical usage, and alerts in one place. Business and Enterprise add customer and retention analytics so you see revenue trends, not only job counts.',
     visual: 'dashboard-view',
+    screenshots: [
+      {
+        src: '/marketing/customers-sites.png',
+        alt: 'PestTrace customers and sites management screen',
+      },
+      {
+        src: '/marketing/invoices.png',
+        alt: 'PestTrace invoices screen with job billing and PDF exports',
+      },
+    ],
   },
 ];
 
@@ -58,6 +92,31 @@ export const teamRoleHighlights = [
   },
 ];
 
+export const icpSegments = [
+  {
+    title: 'Solo operators & owner-operators',
+    pains: [
+      'Paper logbooks that go missing before an audit',
+      'Hours rebuilding records from photos and notes',
+      'Certification expiry caught too late',
+    ],
+    fits: 'Pro — fast field logging, compliance exports, and minimal admin overhead.',
+    planHint: 'Pro plan',
+    cta: { label: 'Start as a solo operator', href: '/auth/signup' },
+  },
+  {
+    title: 'Growing teams & multi-site businesses',
+    pains: [
+      'No visibility into what technicians logged today',
+      'Scheduling gaps and missed follow-ups',
+      'Revenue and performance data stuck in spreadsheets',
+    ],
+    fits: 'Business & Enterprise — scheduling, customer management, analytics, and audit packs.',
+    planHint: 'Business & Enterprise',
+    cta: { label: 'Scale your team', href: '/auth/signup' },
+  },
+];
+
 export const pricingPlans = [
   {
     name: '🟢 Pro',
@@ -95,12 +154,12 @@ export const pricingPlans = [
 export const trustMicrocopy = [
   '7-day free trial',
   'Cancel from the app — no long-term contract',
-  'Built for pest control businesses worldwide',
+  'Built for UK pest control compliance',
 ];
 
 export const regulationUrgency = {
-  title: 'New compliance standards are changing pest control',
-  body: 'With increasing regulatory requirements, pest control businesses are expected to maintain accurate, verifiable records for every job.\n\nPaper logs, spreadsheets, and scattered records are no longer enough.\n\nPestTrace helps you stay compliant, organised, and ready for audits — without the stress.',
+  title: 'Compliance expectations are rising — paper records are a liability',
+  body: 'Rodenticide stewardship, client tenders, and regulatory audits all demand verifiable job history, treatment details, and technician proof.\n\nMissing records cost you time, credibility, and contracts.\n\nPestTrace keeps every job, certificate, and export in one place — so you are ready when an audit lands, not scrambling the night before.',
 };
 
 export const testimonials = [
@@ -132,8 +191,7 @@ export const landingFaqs = [
   },
   {
     question: 'What happens after my 7-day free trial?',
-    answer:
-      "You'll be prompted to add payment details before the trial ends. Plans start from £25/month for Pro; cancel anytime from the dashboard.",
+    answer: `You'll be prompted to add payment details before the trial ends. Plans start from ${MARKETING_STARTING_PRICE_LABEL} for Pro; cancel anytime from the dashboard.`,
   },
   {
     question: 'Can I cancel anytime?',

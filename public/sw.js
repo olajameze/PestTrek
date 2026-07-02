@@ -1,5 +1,5 @@
 // Enhanced Service Worker for Pest Trace with Background Sync
-const CACHE_NAME = 'pesttrace-v7';
+const CACHE_NAME = 'pesttrace-v8';
 // Do not precache /manifest.json: on Vercel Preview + Deployment Protection, same-origin manifest
 // fetches get 401 and cache.addAll() would reject. The manifest is loaded via <link rel="manifest">.
 const urlsToCache = ['/', '/auth/signin', '/home', '/offline.html', '/_offline'];
@@ -38,6 +38,11 @@ self.addEventListener('fetch', (event) => {
   
   const url = new URL(event.request.url);
   if (url.origin !== self.location.origin) return;
+
+  // Let the browser handle large media directly (range requests, streaming).
+  if (url.pathname.startsWith('/marketing/') || /\.(mp4|webm|ogg)$/i.test(url.pathname)) {
+    return;
+  }
 
   event.respondWith(
     fetch(event.request).then((response) => {

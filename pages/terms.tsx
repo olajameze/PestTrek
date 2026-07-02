@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Head from 'next/head';
 import Navbar from '../components/navbar';
 import LandingFooter from '../components/landing/LandingFooter';
 import { getClientSupportEmail } from '../lib/supportEmail';
@@ -7,6 +8,13 @@ export default function TermsPage() {
   const supportAddr = getClientSupportEmail();
   return (
     <div className="min-h-screen bg-offwhite">
+      <Head>
+        <title>Terms of Service | PestTrace</title>
+        <meta
+          name="description"
+          content="Terms of service for PestTrace, the pest control compliance and technician management platform."
+        />
+      </Head>
       <Navbar />
       <main className="mx-auto max-w-5xl px-4 py-16 sm:px-6 lg:px-8">
         <div className="rounded-3xl border border-slate-200 bg-white p-10 shadow-sm">

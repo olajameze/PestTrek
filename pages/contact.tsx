@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import Head from 'next/head';
 import Link from 'next/link';
 import { useToast } from '../components/ui/ToastProvider';
 import Button from '../components/ui/Button';
@@ -66,6 +67,13 @@ export default function ContactPage() {
 
   return (
     <div className="min-h-screen bg-offwhite">
+      <Head>
+        <title>Contact PestTrace — Support & Sales</title>
+        <meta
+          name="description"
+          content="Contact PestTrace for account support, plan upgrades, enterprise integrations, or sales enquiries."
+        />
+      </Head>
       <Navbar />
       <main className="mx-auto max-w-4xl px-4 py-16 sm:px-6 lg:px-8">
         <div className="rounded-3xl border border-slate-200 bg-white p-10 shadow-sm">

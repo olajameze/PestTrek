@@ -7,7 +7,7 @@ test.describe('Pest Trace E2E smoke', () => {
   }) => {
     await page.goto('/');
     // `/` is the landing page (same module as `/home`); it does not redirect to sign-in.
-    await expect(page.getByRole('heading', { level: 1 })).toContainText(/Stay Audit-Ready/i);
+    await expect(page.getByRole('heading', { level: 1 })).toContainText(/Stop scrambling for audit records/i);
 
     await page.goto('/auth/signin');
     await expect(page.locator('body')).toBeVisible();
