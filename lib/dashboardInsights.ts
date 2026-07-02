@@ -385,6 +385,8 @@ for (const e of entriesInRange) {
     (sum, entry) => sum + (entry.price != null && Number(entry.price) > 0 ? Number(entry.price) : ESTIMATED_GBP_PER_VISIT),
     0,
   );
+  const averageJobValueGbp =
+    totalJobs === 0 ? ESTIMATED_GBP_PER_VISIT : Math.round(totalRevenue / totalJobs);
   /** Average revenue per distinct client in range (uses job `price` / invoice value when set, else visit estimate). */
   const clvPerClient = uniqueClients === 0 ? 0 : Math.round(totalRevenue / uniqueClients);
   const cac = Math.max(420, Math.min(1400, Math.round(5400 / Math.max(1, Math.ceil(uniqueClients / 2) || 1))));
@@ -514,5 +516,10 @@ for (const e of entriesInRange) {
       trend: rawNpsResponses.length > 0 ? npsTrend : csatTrend,
     },
     schedulingWidgets,
+    impactContext: {
+      jobsInRange: totalJobs,
+      rangeDays: days,
+      averageJobValueGbp,
+    },
   };
 }

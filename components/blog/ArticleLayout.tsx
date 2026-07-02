@@ -3,6 +3,7 @@ import Link from 'next/link';
 import type { BlogPost } from '../../lib/blog/types';
 import { blogPostCanonical, blogPostTitle } from '../../lib/seo/blog';
 import LandingFooter from '../landing/LandingFooter';
+import LandingNav from '../landing/LandingNav';
 
 type ArticleLayoutProps = {
   post: BlogPost;
@@ -24,16 +25,7 @@ export default function ArticleLayout({ post }: ArticleLayoutProps) {
       </Head>
 
       <div className="min-h-screen bg-white font-sans text-slate-900">
-        <header className="border-b border-slate-100 bg-white">
-          <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-6 sm:px-6">
-            <Link href="/" className="text-sm font-semibold text-slate-600 hover:text-slate-900">
-              ← PestTrace home
-            </Link>
-            <Link href="/blog" className="text-sm font-semibold text-emerald-600 hover:text-emerald-700">
-              All articles
-            </Link>
-          </div>
-        </header>
+        <LandingNav />
 
         <main className="mx-auto max-w-3xl px-4 py-12 sm:px-6">
           <article>

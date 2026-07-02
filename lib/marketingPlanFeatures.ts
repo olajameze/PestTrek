@@ -21,6 +21,7 @@ export const MARKETING_PLAN_FEATURES = {
     'Compliance alerts for missed recurring visits & follow-ups',
     'Audit pack ZIP with compliance score PDF',
     'Customer analytics — including customer lifetime value (CLV)',
+    'Impact Calculator — ROI from your live job data',
   ],
   enterprise: [
     'Unlimited technicians',
@@ -29,6 +30,7 @@ export const MARKETING_PLAN_FEATURES = {
     'White-label PDFs — logo, colours, footer on reports & invoices',
     'Multi-site audit packs for commercial clients',
     'Retention & churn plus CSAT / NPS trends; log NPS on Reports',
+    'Impact Calculator — ROI from your live job data',
     'Dedicated account manager details in Settings',
     'Enterprise security — IP allowlist, verified-email requirements',
   ],

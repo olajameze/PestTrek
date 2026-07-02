@@ -53,8 +53,26 @@ export default function LandingFooter() {
         <div className="sm:col-span-4">
           <p className="text-xs uppercase tracking-[0.28em] text-slate-500">Quick links</p>
           <div className="mt-3 flex flex-col gap-2 text-sm text-slate-300">
+            <Link href="/about" className="transition hover:text-white">
+              About
+            </Link>
+            <Link href="/compliance" className="transition hover:text-white">
+              Compliance
+            </Link>
+            <Link href="/features" className="transition hover:text-white">
+              Features
+            </Link>
+            <Link href="/product" className="transition hover:text-white">
+              Product tour
+            </Link>
+            <Link href="/pricing" className="transition hover:text-white">
+              Pricing
+            </Link>
             <Link href="/blog" className="transition hover:text-white">
               Blog
+            </Link>
+            <Link href="/impact-calculator" className="transition hover:text-white">
+              Impact Calculator
             </Link>
             <Link href="/privacy" className="transition hover:text-white">
               Privacy Policy

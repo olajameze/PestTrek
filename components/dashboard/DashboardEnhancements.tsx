@@ -17,6 +17,10 @@ import SchedulingTodayJobs from './SchedulingTodayJobs';
 import SchedulingUpcomingJobs from './SchedulingUpcomingJobs';
 import SchedulingUnassignedJobs from './SchedulingUnassignedJobs';
 import SchedulingOverdueJobs from './SchedulingOverdueJobs';
+import ImpactCalculatorPanel from './ImpactCalculatorPanel';
+import Link from 'next/link';
+import { canUseBusinessFeatures } from '../../lib/businessFeatures/planAccess';
+import { impactCalculatorDashboardUpgrade } from '../../lib/marketing/impactCalculatorCopy';
 import { useUserPlan } from '../../lib/auth/plan';
 import { useDateRange } from '../../lib/hooks/useDateRange';
 import { useDashboardData } from '../../lib/hooks/useDashboardData';
@@ -40,6 +44,7 @@ export default function DashboardEnhancements({ plan, enterprisePreview = false 
   const showAnalytics = userPlan === 'business' || userPlan === 'enterprise' || enterprisePreview;
   const showEnterprise = userPlan === 'enterprise' || enterprisePreview;
   const showScheduling = userPlan === 'business' || userPlan === 'enterprise' || enterprisePreview;
+  const showImpactCalculator = canUseBusinessFeatures(userPlan);
 
   const planDescription = useMemo(() => {
     if (userPlan === 'enterprise') return 'Enterprise analytics are available.';
@@ -188,6 +193,39 @@ export default function DashboardEnhancements({ plan, enterprisePreview = false 
           <SchedulingOverdueJobs appointments={data?.schedulingWidgets?.overdueJobs ?? []} loading={loading} />
         </div>
       ) : null}
+
+      {showImpactCalculator ? (
+        <ImpactCalculatorPanel
+          impactContext={
+            data?.impactContext ?? {
+              jobsInRange: 0,
+              rangeDays: Number(range),
+              averageJobValueGbp: 135,
+            }
+          }
+          plan={userPlan}
+          loading={loading}
+        />
+      ) : (
+        <Card className="border-dashed border-slate-300 bg-slate-50 text-slate-700">
+          <p className="text-sm font-medium text-slate-900">{impactCalculatorDashboardUpgrade.title}</p>
+          <p className="mt-2 text-sm">{impactCalculatorDashboardUpgrade.body}</p>
+          <div className="mt-4 flex flex-wrap gap-3">
+            <Link
+              href="/impact-calculator"
+              className="inline-flex rounded-xl bg-white px-4 py-2 text-sm font-semibold text-emerald-700 ring-1 ring-emerald-200 transition hover:bg-emerald-50"
+            >
+              {impactCalculatorDashboardUpgrade.publicLinkLabel}
+            </Link>
+            <Link
+              href="/upgrade"
+              className="inline-flex rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
+            >
+              {impactCalculatorDashboardUpgrade.upgradeLabel}
+            </Link>
+          </div>
+        </Card>
+      )}
 
       <details className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm" open>
         <summary className="cursor-pointer text-lg font-semibold text-navy">Customer & retention analytics</summary>

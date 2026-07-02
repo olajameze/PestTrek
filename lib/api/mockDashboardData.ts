@@ -111,7 +111,14 @@ export interface FollowUpQueueData {
 
 import type { SchedulingWidgetsData } from '../scheduling/types';
 
+export interface DashboardImpactContext {
+  jobsInRange: number;
+  rangeDays: number;
+  averageJobValueGbp: number;
+}
+
 export interface DashboardData {
+  impactContext?: DashboardImpactContext;
   todaySchedule: {
     appointments: Appointment[];
     completed: number;

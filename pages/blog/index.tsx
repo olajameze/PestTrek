@@ -2,6 +2,7 @@ import Head from 'next/head';
 import Link from 'next/link';
 import BlogPostCard from '../../components/blog/BlogPostCard';
 import LandingFooter from '../../components/landing/LandingFooter';
+import LandingNav from '../../components/landing/LandingNav';
 import { blogPosts } from '../../lib/blog/posts';
 import { BLOG_INDEX_DESCRIPTION, BLOG_INDEX_TITLE, blogIndexCanonical } from '../../lib/seo/blog';
 
@@ -22,16 +23,7 @@ export default function BlogIndexPage() {
       </Head>
 
       <div className="min-h-screen bg-white font-sans text-slate-900">
-        <header className="border-b border-slate-100">
-          <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-6 sm:px-6">
-            <Link href="/" className="text-sm font-semibold text-slate-600 hover:text-slate-900">
-              ← PestTrace home
-            </Link>
-            <Link href="/auth/signup" className="text-sm font-semibold text-emerald-600 hover:text-emerald-700">
-              Start Free Trial
-            </Link>
-          </div>
-        </header>
+        <LandingNav />
 
         <main className="mx-auto max-w-5xl px-4 py-16 sm:px-6">
           <h1 className="text-4xl font-black tracking-tight sm:text-5xl">PestTrace Blog</h1>

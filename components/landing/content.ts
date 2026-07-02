@@ -203,3 +203,5 @@ export const landingFaqs = [
       'No download required. PestTrace runs in the browser and can be installed as a PWA on phones for quick access on site.',
   },
 ];
+
+export { impactCalculatorTeaser } from '../../lib/marketing/impactCalculatorCopy';

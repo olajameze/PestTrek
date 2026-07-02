@@ -1,5 +1,5 @@
 // Enhanced Service Worker for Pest Trace with Background Sync
-const CACHE_NAME = 'pesttrace-v8';
+const CACHE_NAME = 'pesttrace-v10';
 // Do not precache /manifest.json: on Vercel Preview + Deployment Protection, same-origin manifest
 // fetches get 401 and cache.addAll() would reject. The manifest is loaded via <link rel="manifest">.
 const urlsToCache = ['/', '/auth/signin', '/home', '/offline.html', '/_offline'];
@@ -33,37 +33,51 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+function offlineFallbackResponse(request) {
+  return caches.match(request).then((cachedResponse) => {
+    if (cachedResponse) return cachedResponse;
+    if (request.mode === 'navigate') {
+      return caches.match('/offline.html');
+    }
+    return new Response('Offline', {
+      status: 503,
+      statusText: 'Service Unavailable',
+    });
+  });
+}
+
+function cacheSuccessfulResponse(request, response) {
+  if (!response || response.status !== 200 || response.type === 'error') {
+    return response;
+  }
+  const responseToCache = response.clone();
+  caches.open(CACHE_NAME).then((cache) => {
+    cache.put(request, responseToCache);
+  });
+  return response;
+}
+
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
   
   const url = new URL(event.request.url);
   if (url.origin !== self.location.origin) return;
 
-  // Let the browser handle large media directly (range requests, streaming).
-  if (url.pathname.startsWith('/marketing/') || /\.(mp4|webm|ogg)$/i.test(url.pathname)) {
+  const isStreamableMedia = /\.(mp4|webm|ogg)$/i.test(url.pathname);
+  const isMarketingAsset = url.pathname.startsWith('/marketing/');
+
+  // Marketing assets and streaming media: network-first, no SW cache (preserves range requests / fresh deploys).
+  if (isStreamableMedia || isMarketingAsset) {
+    event.respondWith(
+      fetch(event.request).catch(() => offlineFallbackResponse(event.request))
+    );
     return;
   }
 
   event.respondWith(
-    fetch(event.request).then((response) => {
-      if (!response || response.status !== 200 || response.type === 'error') {
-        return response;
-      }
-      const responseToCache = response.clone();
-      caches.open(CACHE_NAME).then((cache) => {
-        cache.put(event.request, responseToCache);
-      });
-      return response;
-    }).catch(() => caches.match(event.request).then((cachedResponse) => {
-      if (cachedResponse) return cachedResponse;
-      if (event.request.mode === 'navigate') {
-        return caches.match('/offline.html');
-      }
-      return new Response('Offline', {
-        status: 503,
-        statusText: 'Service Unavailable',
-      });
-    }))
+    fetch(event.request).then((response) => cacheSuccessfulResponse(event.request, response)).catch(() =>
+      offlineFallbackResponse(event.request)
+    )
   );
 });
 

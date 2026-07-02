@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useToast } from '../components/ui/ToastProvider';
 import Button from '../components/ui/Button';
 import FormInput from '../components/ui/FormInput';
-import Navbar from '../components/navbar';
+import LandingNav from '../components/landing/LandingNav';
 import LandingFooter from '../components/landing/LandingFooter';
 import { getClientSupportEmail } from '../lib/supportEmail';
 
@@ -74,7 +74,7 @@ export default function ContactPage() {
           content="Contact PestTrace for account support, plan upgrades, enterprise integrations, or sales enquiries."
         />
       </Head>
-      <Navbar />
+      <LandingNav />
       <main className="mx-auto max-w-4xl px-4 py-16 sm:px-6 lg:px-8">
         <div className="rounded-3xl border border-slate-200 bg-white p-10 shadow-sm">
           <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr]">
