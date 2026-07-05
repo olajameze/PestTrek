@@ -148,11 +148,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       : typeof req.body?.flow === 'string'
         ? req.body.flow
         : '';
+  const intentLower = intentRaw.toLowerCase();
   const intent =
-    intentRaw.toLowerCase() === 'cancel' ||
-    intentRaw.toLowerCase() === 'subscription_cancel'
+    intentLower === 'cancel' || intentLower === 'subscription_cancel'
       ? 'cancel'
-      : 'manage';
+      : intentLower === 'payment_update' ||
+          intentLower === 'payment_method_update' ||
+          intentLower === 'update_payment'
+        ? 'payment_update'
+        : 'manage';
 
   const configurationId = process.env.STRIPE_BILLING_PORTAL_CONFIGURATION_ID?.trim();
 
@@ -180,6 +184,38 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const configVariants: boolean[] = configurationId ? [true, false] : [false];
+
+    if (intent === 'payment_update') {
+      for (const returnUrl of returnUrlCandidates) {
+        attemptedReturnHostname = stripeReturnHostLog(returnUrl);
+        for (const withConfig of configVariants) {
+          try {
+            const portalSession = await stripe.billingPortal.sessions.create({
+              customer: customerId,
+              return_url: returnUrl,
+              ...(withConfig && configurationId ? { configuration: configurationId } : {}),
+              flow_data: {
+                type: 'payment_method_update',
+              },
+            });
+            return res.status(200).json({ url: portalSession.url });
+          } catch (flowErr) {
+            lastError = flowErr;
+            const parsedFlow = parseStripePortalError(flowErr);
+            if (isStripePortalReturnUrlRejection(flowErr)) {
+              logger.warn(
+                `Stripe portal payment-update URL reject (retry): ${parsedFlow.message} stripeParam=${parsedFlow.param ?? ''} use_bpc=${withConfig} return_host=${attemptedReturnHostname}`,
+              );
+              continue;
+            }
+            logger.warn(
+              `Stripe portal payment-update deep-link failed, trying default portal: ${parsedFlow.message} code=${parsedFlow.code ?? ''} return_host=${attemptedReturnHostname}`,
+            );
+            break;
+          }
+        }
+      }
+    }
 
     for (const returnUrl of returnUrlCandidates) {
       attemptedReturnHostname = stripeReturnHostLog(returnUrl);

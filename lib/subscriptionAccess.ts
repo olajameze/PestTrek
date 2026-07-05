@@ -5,44 +5,66 @@ export type AccessSnapshot = {
   subscriptionStatus?: string | null;
   trialEndsAt?: string | Date | null;
   paymentGraceEndsAt?: string | Date | null;
+  paymentFailedAt?: string | Date | null;
 };
 
-function parseTrialEnd(value: AccessSnapshot['trialEndsAt']): number | null {
+function parseDateMs(value: AccessSnapshot['trialEndsAt']): number | null {
   if (!value) return null;
   const parsed = value instanceof Date ? value : new Date(value);
   const timestamp = parsed.getTime();
   return Number.isNaN(timestamp) ? null : timestamp;
 }
 
+/** True when a paid subscription invoice failed and access must stay locked until Stripe confirms payment. */
+export function hasOutstandingPaymentFailure(snapshot: AccessSnapshot): boolean {
+  if (parseDateMs(snapshot.paymentFailedAt)) {
+    return true;
+  }
+
+  const status = snapshot.subscriptionStatus
+    ? String(snapshot.subscriptionStatus).toLowerCase()
+    : '';
+  const planNorm = snapshot.plan ? String(snapshot.plan).toLowerCase().trim() : '';
+  const hasPaidTierName =
+    planNorm !== '' && checkPlan(planNorm, ['pro', 'business', 'enterprise']);
+
+  return hasPaidTierName && (status === 'past_due' || status === 'unpaid');
+}
+
+export function subscriptionAccessBlockedMessage(snapshot: AccessSnapshot): string {
+  if (hasOutstandingPaymentFailure(snapshot)) {
+    return 'Your last payment failed. Update your card in Stripe billing to restore access.';
+  }
+  return 'Trial expired. Upgrade required to continue using Pest Trace.';
+}
+
 export function hasSubscriptionAccess(snapshot: AccessSnapshot, nowMs = Date.now()): boolean {
+  if (hasOutstandingPaymentFailure(snapshot)) {
+    return false;
+  }
+
   const status = snapshot.subscriptionStatus ? String(snapshot.subscriptionStatus).toLowerCase() : '';
   const planNorm = snapshot.plan ? String(snapshot.plan).toLowerCase().trim() : '';
   const hasPaidTierName =
     planNorm !== '' && checkPlan(planNorm, ['pro', 'business', 'enterprise']);
 
-  // Stripe billing states that retain product access pending payment / webhook grace flows.
-  const stripeSupportsPaidSku =
-    status === 'active' ||
-    status === 'trialing' ||
-    status === 'past_due' ||
-    status === 'unpaid';
+  const stripeSupportsPaidSku = status === 'active' || status === 'trialing';
 
   if (hasPaidTierName && stripeSupportsPaidSku) {
     return true;
   }
 
-  // Active/trialing even if plan slug drifted
   if (status === 'active' || status === 'trialing') {
     return true;
   }
 
-  const graceEndMs = parseTrialEnd(snapshot.paymentGraceEndsAt);
+  const graceEndMs = parseDateMs(snapshot.paymentGraceEndsAt);
   return graceEndMs !== null && graceEndMs > nowMs;
 }
 
 /** True when trial is still active but signup checkout (Stripe subscription) is not complete. */
 export function needsSignupCheckout(snapshot: AccessSnapshot, nowMs = Date.now()): boolean {
-  const trialEndMs = parseTrialEnd(snapshot.trialEndsAt);
+  const trialEndMs = parseDateMs(snapshot.trialEndsAt);
   if (trialEndMs === null || trialEndMs <= nowMs) {
     return false;
   }
@@ -97,10 +119,13 @@ export function ownerCanManagePaidPlanInStripe(snapshot: {
 }
 
 export function getGraceDaysLeft(snapshot: AccessSnapshot, nowMs = Date.now()): number | null {
-  const graceEndMs = parseTrialEnd(snapshot.paymentGraceEndsAt);
+  if (hasOutstandingPaymentFailure(snapshot)) {
+    return null;
+  }
+
+  const graceEndMs = parseDateMs(snapshot.paymentGraceEndsAt);
   if (graceEndMs === null || graceEndMs <= nowMs) {
     return null;
   }
   return Math.max(1, Math.ceil((graceEndMs - nowMs) / (1000 * 60 * 60 * 24)));
 }
-

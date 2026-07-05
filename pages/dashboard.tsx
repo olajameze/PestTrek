@@ -589,13 +589,17 @@ export default function Dashboard() {
           subscriptionStatus: subData.status,
           trialEndsAt: subData.trialEndsAt,
           paymentGraceEndsAt: subData.paymentGraceEndsAt,
+          paymentFailedAt: subData.paymentFailedAt,
         });
         const trialExpiresAt = subData.trialEndsAt ? new Date(subData.trialEndsAt) : null;
         const graceDaysLeft = getGraceDaysLeft(
           {
+            plan: subData.plan,
+            subscriptionStatus: subData.status,
             paymentGraceEndsAt: subData.paymentGraceEndsAt,
+            paymentFailedAt: subData.paymentFailedAt,
           },
-          now
+          now,
         );
 
         if (!hasAccess) {
@@ -604,6 +608,7 @@ export default function Dashboard() {
             subscriptionStatus: subData.status,
             trialEndsAt: subData.trialEndsAt,
             paymentGraceEndsAt: subData.paymentGraceEndsAt,
+            paymentFailedAt: subData.paymentFailedAt,
           });
           if (!checkoutNeeded) {
             router.replace('/upgrade');

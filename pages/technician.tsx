@@ -6,7 +6,7 @@ import { supabase } from '../lib/supabase';
 import Sidebar from '../components/sidebar';
 import { useToast } from '../components/ui/ToastProvider';
 import Button from '../components/ui/Button';
-import { getGraceDaysLeft, hasSubscriptionAccess } from '../lib/subscriptionAccess';
+import { getGraceDaysLeft, hasSubscriptionAccess, hasOutstandingPaymentFailure } from '../lib/subscriptionAccess';
 import { isValidUkPostcode } from '../lib/ukPostcode';
 import { usePermissions } from '../hooks/usePermissions';
 import { useLocale } from '../lib/hooks/useLocale';
@@ -225,6 +225,7 @@ export default function TechnicianPage() {
   const canReturnToAdminDashboard = canSwitchToTechnician();
   const accessDeniedTarget = typeof router.query.accessDenied === 'string' ? router.query.accessDenied : '';
   const [loading, setLoading] = useState(true);
+  const [billingSuspended, setBillingSuspended] = useState(false);
   const [profile, setProfile] = useState<TechnicianProfile | null>(null);
   // Company country from the database takes priority over browser detection.
   // This eliminates mis-detection caused by browser language preferences
@@ -481,17 +482,25 @@ export default function TechnicianPage() {
       });
       if (subRes.ok) {
         const subData = await subRes.json();
-        const hasAccess = hasSubscriptionAccess({
+        const accessSnapshot = {
           plan: subData.plan,
           subscriptionStatus: subData.status,
           trialEndsAt: subData.trialEndsAt,
           paymentGraceEndsAt: subData.paymentGraceEndsAt,
-        });
+          paymentFailedAt: subData.paymentFailedAt,
+        };
+        const hasAccess = hasSubscriptionAccess(accessSnapshot);
         if (!hasAccess) {
+          if (hasOutstandingPaymentFailure(accessSnapshot)) {
+            setBillingSuspended(true);
+            setLoading(false);
+            return;
+          }
           router.replace('/upgrade');
           return;
         }
-        const daysLeft = getGraceDaysLeft({ paymentGraceEndsAt: subData.paymentGraceEndsAt });
+        setBillingSuspended(false);
+        const daysLeft = getGraceDaysLeft(accessSnapshot);
         setOverdueBanner(
           daysLeft !== null
             ? `Billing is overdue. Your company has ${daysLeft} day${daysLeft === 1 ? '' : 's'} remaining before service interruption.`
@@ -965,6 +974,20 @@ export default function TechnicianPage() {
 
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center bg-offwhite">Loading technician dashboard...</div>;
+  }
+
+  if (billingSuspended) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-offwhite px-4">
+        <div className="max-w-md rounded-2xl border border-red-200 bg-white p-6 text-center shadow-md">
+          <h1 className="text-xl font-bold text-navy">Company access suspended</h1>
+          <p className="mt-3 text-sm text-gray-600">
+            Your company&apos;s subscription payment failed. Ask the account owner to update their card in Stripe billing
+            before you can use Pest Trace again.
+          </p>
+        </div>
+      </div>
+    );
   }
 
   if (!profile) {

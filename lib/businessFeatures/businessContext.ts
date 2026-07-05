@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { supabase } from '../supabase';
 import { prisma } from '../prisma';
-import { hasSubscriptionAccess } from '../subscriptionAccess';
+import { hasSubscriptionAccess, subscriptionAccessBlockedMessage } from '../subscriptionAccess';
 import { normalizeAuthEmail } from '../auth/userSession';
 import { technicianEmailWhere } from '../auth/technicianGate';
 import { ForbiddenError, NotFoundError, ValidationError } from '../scheduling/validation';
@@ -106,7 +106,7 @@ export async function resolveBusinessContext(req: NextApiRequest): Promise<Busin
 
 export function assertBusinessAccess(ctx: BusinessContext): void {
   if (!hasSubscriptionAccess(ctx.company)) {
-    throw new ForbiddenError('Trial expired. Upgrade required to continue using Pest Trace.');
+    throw new ForbiddenError(subscriptionAccessBlockedMessage(ctx.company));
   }
   if (!canUseBusinessFeatures(ctx.company.plan)) {
     throw new ForbiddenError(businessPlanError());

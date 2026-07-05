@@ -471,6 +471,7 @@ export default function ReportsPage() {
               subscriptionStatus: subData.status,
               trialEndsAt: subData.trialEndsAt,
               paymentGraceEndsAt: subData.paymentGraceEndsAt,
+              paymentFailedAt: subData.paymentFailedAt,
             })
           ) {
             router.replace('/upgrade');

@@ -7,6 +7,7 @@ export type SubscriptionState = {
   status: string;
   trialEndsAt?: string;
   paymentGraceEndsAt?: string;
+  paymentFailedAt?: string;
   plan?: string;
 };
 
@@ -41,6 +42,7 @@ export function useSubscriptionGate() {
           subscriptionStatus: data.status,
           trialEndsAt: data.trialEndsAt,
           paymentGraceEndsAt: data.paymentGraceEndsAt,
+          paymentFailedAt: data.paymentFailedAt,
         })
       ) {
         router.push('/upgrade');

@@ -3,7 +3,7 @@ import { useRouter } from 'next/router';
 import { supabase } from '../lib/supabase';
 import { useToast } from '../components/ui/ToastProvider';
 import { MARKETING_PLAN_FEATURES, PRICING_TRIAL_FOOTNOTE } from '../lib/marketingPlanFeatures';
-import { ownerCanManagePaidPlanInStripe } from '../lib/subscriptionAccess';
+import { ownerCanManagePaidPlanInStripe, hasOutstandingPaymentFailure } from '../lib/subscriptionAccess';
 
 type Company = {
   id: string;
@@ -19,6 +19,7 @@ type Subscription = {
   plan?: string;
   subscriptionPeriodEndAt?: string | null;
   subscriptionCancelAtPeriodEnd?: boolean;
+  paymentFailedAt?: string | null;
 };
 
 export default function UpgradePage() {
@@ -133,6 +134,36 @@ export default function UpgradePage() {
     }
   };
 
+  const handleUpdatePaymentMethod = async () => {
+    if (isPreviewMode) {
+      showToast('Preview mode', 'Billing portal is disabled in preview mode.', 'info');
+      return;
+    }
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      router.push('/auth/signin');
+      return;
+    }
+
+    setActionLoading(true);
+    const res = await fetch('/api/create-portal-session', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ intent: 'payment_update' }),
+    });
+    const data = await res.json();
+    if (res.ok && data.url) {
+      window.location.href = data.url;
+    } else {
+      const detail = [data.error, data.hint].filter(Boolean).join(' — ');
+      showToast('Payment update failed', detail || 'Unable to open secure billing', 'error');
+      setActionLoading(false);
+    }
+  };
+
   const handleManageSubscription = async () => {
     if (isPreviewMode) {
       showToast('Preview mode', 'Billing portal is disabled in preview mode.', 'info');
@@ -221,6 +252,15 @@ export default function UpgradePage() {
       stripeCustomerId: subscription?.stripeCustomerId,
     });
 
+  const paymentBlocked = Boolean(
+    subscription &&
+      hasOutstandingPaymentFailure({
+        plan: subscription.plan ?? company?.plan,
+        subscriptionStatus: subscription.status,
+        paymentFailedAt: subscription.paymentFailedAt,
+      }),
+  );
+
   const cancelScheduled = Boolean(subscription?.subscriptionCancelAtPeriodEnd);
   const paidAccessEnds =
     subscription?.subscriptionPeriodEndAt && !Number.isNaN(new Date(subscription.subscriptionPeriodEndAt).getTime())
@@ -232,12 +272,35 @@ export default function UpgradePage() {
       <div className="mx-auto max-w-3xl min-w-0 space-y-6">
         {/* Header Card */}
         <div className="bg-white rounded-2xl shadow-md p-6 sm:p-8 text-center">
-          <h1 className="text-2xl sm:text-3xl font-bold text-navy mb-3">Upgrade to Pest Trace</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-navy mb-3">
+            {paymentBlocked ? 'Payment required' : 'Upgrade to Pest Trace'}
+          </h1>
           <div className="mx-auto h-1 w-20 bg-primary-500 rounded-full mb-4"></div>
           <p className="text-sm sm:text-base text-gray-600">
-            Choose a plan for your team. Features match the lists below — trial limits apply until you subscribe.
+            {paymentBlocked
+              ? 'Your last subscription payment failed. Pest Trace is locked until you add a valid card and pay the outstanding invoice in Stripe.'
+              : 'Choose a plan for your team. Features match the lists below — trial limits apply until you subscribe.'}
           </p>
         </div>
+
+        {paymentBlocked ? (
+          <div className="rounded-xl border border-red-200 bg-red-50 p-4 sm:p-6">
+            <p className="text-sm font-semibold text-red-900">Payment failed — access suspended</p>
+            <p className="mt-2 text-sm text-red-800">
+              Stripe could not charge your card (for example, an invalid card or account number). Update your payment
+              method using Stripe&apos;s secure billing portal, then retry the invoice. Access restores automatically
+              after payment succeeds.
+            </p>
+            <button
+              type="button"
+              onClick={handleUpdatePaymentMethod}
+              disabled={actionLoading || !canStripeBilling}
+              className="btn btn-primary mt-4 w-full sm:w-auto"
+            >
+              {actionLoading ? 'Opening secure billing…' : 'Update card & pay in Stripe'}
+            </button>
+          </div>
+        ) : null}
 
         {/* Status Cards */}
         <div className="space-y-3">
@@ -294,6 +357,7 @@ export default function UpgradePage() {
         </div>
 
         {/* Pricing Cards */}
+        {!paymentBlocked ? (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
           <div className="rounded-2xl border border-blue-100 bg-white p-6 shadow-sm">
             <h2 className="text-xl font-bold text-navy">🟢 Pro</h2>
@@ -351,8 +415,11 @@ export default function UpgradePage() {
             </button>
           </div>
         </div>
+        ) : null}
 
+        {!paymentBlocked ? (
         <p className="text-center text-xs leading-relaxed text-zinc-500">{PRICING_TRIAL_FOOTNOTE}</p>
+        ) : null}
 
         <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:gap-4">
           {canStripeBilling ? (
@@ -375,8 +442,12 @@ export default function UpgradePage() {
               </button>
             </>
           ) : null}
-          <button className="btn btn-secondary w-full sm:w-auto hover:shadow-md hover-lift" onClick={() => router.push('/dashboard')}>
-            Back to Dashboard
+          <button
+            className="btn btn-secondary w-full sm:w-auto hover:shadow-md hover-lift"
+            onClick={() => router.push(paymentBlocked ? '/upgrade' : '/dashboard')}
+            disabled={paymentBlocked}
+          >
+            {paymentBlocked ? 'Dashboard locked' : 'Back to Dashboard'}
           </button>
           <button 
             className="btn btn-danger w-full sm:w-auto hover:shadow-md hover-lift" 

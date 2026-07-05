@@ -5,7 +5,7 @@ import { logger } from '../../../lib/logger';
 import { sendSubscriptionUpgradeEmail } from '../subscription';
 import { reconcileCompanyBillingFromStripe, subscriptionStatusForDb } from '../../../lib/stripe/reconcileCompanyBilling';
 import { stripeSubscriptionBillingSnapshot } from '../../../lib/stripe/subscriptionBilling';
-import { sendSubscriptionCancellationScheduledEmail } from '../../../lib/email';
+import { sendSubscriptionCancellationScheduledEmail, sendSubscriptionPaymentFailedEmail } from '../../../lib/email';
 
 const GRACE_PERIOD_DAYS = 5;
 const RETRIAL_PERIOD_DAYS = 7;
@@ -210,6 +210,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             name: true,
             plan: true,
             subscriptionCancelAtPeriodEnd: true,
+            paymentFailedAt: true,
           },
         });
 
@@ -219,6 +220,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         const wasScheduled = Boolean(companyRow.subscriptionCancelAtPeriodEnd);
         const planForEmail = resolvedPlan ?? String(companyRow.plan ?? 'pro').toLowerCase();
+        const paymentDelinquent = rawStatus === 'past_due' || rawStatus === 'unpaid';
+        const failedAt = paymentDelinquent
+          ? (companyRow.paymentFailedAt ?? new Date(event.created * 1000))
+          : null;
 
         await prisma.company.update({
           where: { id: companyRow.id },
@@ -233,6 +238,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               paymentGraceEndsAt: null,
               nonPaymentCanceledAt: null,
             }),
+            ...(paymentDelinquent &&
+              failedAt && {
+                paymentFailedAt: failedAt,
+                paymentGraceEndsAt: buildGraceEnd(failedAt),
+              }),
           },
         });
 
@@ -266,10 +276,37 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         await prisma.company.updateMany({
           where: { stripeCustomerId },
           data: {
+            subscriptionStatus: 'past_due',
             paymentFailedAt: failedAt,
             paymentGraceEndsAt: buildGraceEnd(failedAt),
           },
         });
+
+        const company = await prisma.company.findUnique({
+          where: { stripeCustomerId },
+          select: { email: true, name: true, plan: true },
+        });
+        const recipientEmail = company?.email?.trim() || invoice.customer_email?.trim() || '';
+        const linePlan = invoice.lines?.data?.[0]?.metadata?.plan;
+        const resolvedPlan = linePlan || company?.plan || 'pro';
+
+        if (recipientEmail) {
+          try {
+            await sendSubscriptionPaymentFailedEmail({
+              email: recipientEmail,
+              companyName: company?.name ?? invoice.customer_name,
+              plan: resolvedPlan,
+              amountDueMinor: invoice.amount_due ?? invoice.total ?? 0,
+              currency: invoice.currency || 'gbp',
+              stripeEventId: event.id,
+              hostedInvoiceUrl: invoice.hosted_invoice_url,
+            });
+          } catch (emailErr) {
+            logger.error(
+              `Payment failed email could not be sent: ${emailErr instanceof Error ? emailErr.message : String(emailErr)}`,
+            );
+          }
+        }
         break;
       }
 

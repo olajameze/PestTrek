@@ -291,6 +291,89 @@ The Pest Trace team`;
   });
 }
 
+function formatMoneyForEmail(amountMinor: number, currency: string): string {
+  const code = currency.toUpperCase();
+  const major = amountMinor / 100;
+  try {
+    return new Intl.NumberFormat('en-GB', { style: 'currency', currency: code }).format(major);
+  } catch {
+    return `${code} ${major.toFixed(2)}`;
+  }
+}
+
+/** Sent when Stripe reports a failed subscription invoice — access is locked until payment succeeds. */
+export async function sendSubscriptionPaymentFailedEmail(params: {
+  email: string;
+  companyName?: string | null;
+  plan?: string | null;
+  amountDueMinor: number;
+  currency: string;
+  stripeEventId: string;
+  hostedInvoiceUrl?: string | null;
+}): Promise<{ id: string } | undefined> {
+  const email = params.email.trim();
+  if (!email) return undefined;
+
+  const planLabel = formatPlanLabelForEmail(params.plan?.trim() || 'pro');
+  const safeCompany = params.companyName?.trim() ? escapeHtml(params.companyName.trim()) : null;
+  const amountLabel = formatMoneyForEmail(params.amountDueMinor, params.currency);
+  const upgradeUrl = `${appUrl}/upgrade`;
+  const hostedInvoiceUrl = params.hostedInvoiceUrl?.trim() || null;
+
+  const idempotencyKey = `payment-failed/${createHash('sha256')
+    .update(params.stripeEventId)
+    .digest('hex')
+    .slice(0, 48)}`;
+
+  const inner = `
+    <p>Hi${safeCompany ? ` from <strong>${safeCompany}</strong>` : ''},</p>
+    <p>We couldn&apos;t collect your Pest Trace <strong>${escapeHtml(planLabel)}</strong> subscription payment of <strong>${escapeHtml(amountLabel)}</strong>.</p>
+    <p>This usually happens when a card number is invalid, expired, or declined. Your Pest Trace workspace is temporarily locked until payment succeeds.</p>
+    <p><strong>What to do next</strong></p>
+    <ol style="padding-left:20px;margin:12px 0;">
+      <li>Open secure billing below and add a valid payment card (handled by Stripe — we never store card numbers).</li>
+      <li>Pay the outstanding invoice. Access restores automatically once Stripe confirms payment.</li>
+    </ol>
+    <p style="text-align:center;margin:28px 0;">
+      <a href="${upgradeUrl}" style="background-color:#E53E3E;color:#ffffff;padding:14px 28px;text-decoration:none;border-radius:8px;font-weight:600;font-size:16px;display:inline-block;">
+        Update card &amp; pay now
+      </a>
+    </p>
+    ${
+      hostedInvoiceUrl
+        ? `<p>You can also pay the invoice directly in Stripe: <a href="${escapeHtml(hostedInvoiceUrl)}">View invoice</a>.</p>`
+        : ''
+    }
+    <p>If the problem persists, try a different payment method or contact your bank, then retry in billing. Questions? Reply to this email or contact <a href="mailto:${escapeHtml(supportEmail)}">${escapeHtml(supportEmail)}</a>.</p>
+    <p>Thanks,<br />The Pest Trace team</p>
+  `;
+
+  const text = `Hi${params.companyName?.trim() ? ` (${params.companyName.trim()})` : ''},
+
+We couldn't collect your Pest Trace ${planLabel} subscription payment of ${amountLabel}.
+
+This usually happens when a card number is invalid, expired, or declined. Your workspace is locked until payment succeeds.
+
+What to do next:
+1. Open secure billing and add a valid payment card (via Stripe): ${upgradeUrl}
+2. Pay the outstanding invoice. Access restores automatically after payment succeeds.
+${hostedInvoiceUrl ? `\nPay invoice in Stripe: ${hostedInvoiceUrl}\n` : ''}
+If the problem persists, try a different payment method or contact your bank.
+
+Support: ${supportEmail}
+
+Thanks,
+The Pest Trace team`;
+
+  return sendMail({
+    to: [email],
+    subject: `Action required: Pest Trace payment failed (${amountLabel})`,
+    html: brandEmailHtml('Payment failed', inner),
+    text,
+    idempotencyKey,
+  });
+}
+
 /** Sent when the app-managed free trial has ended and the workspace no longer has full access. */
 export async function sendTrialEndedUpgradeEmail(params: {
   email: string;

@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { supabase } from '../supabase';
 import { prisma } from '../prisma';
-import { hasSubscriptionAccess } from '../subscriptionAccess';
+import { hasSubscriptionAccess, subscriptionAccessBlockedMessage } from '../subscriptionAccess';
 import { normalizeAuthEmail } from '../auth/userSession';
 import { technicianEmailWhere } from '../auth/technicianGate';
 import { canUseSmartScheduling, smartSchedulingPlanError } from './planAccess';
@@ -93,7 +93,7 @@ export async function resolveSchedulingContext(req: NextApiRequest): Promise<Sch
 
 export function assertSchedulingAccess(ctx: SchedulingContext): void {
   if (!hasSubscriptionAccess(ctx.company)) {
-    throw new ForbiddenError('Trial expired. Upgrade required to continue using Pest Trace.');
+    throw new ForbiddenError(subscriptionAccessBlockedMessage(ctx.company));
   }
   if (!canUseSmartScheduling(ctx.company.plan)) {
     throw new ForbiddenError(smartSchedulingPlanError());

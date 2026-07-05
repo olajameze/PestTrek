@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import {
+  hasOutstandingPaymentFailure,
   hasSubscriptionAccess,
   needsSignupCheckout,
 } from '../lib/subscriptionAccess';
@@ -8,6 +9,7 @@ import { formatTrialChargeDate } from '../lib/stripe/signupCheckout';
 const futureTrialEnd = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
 const pastTrialEnd = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 const futureGraceEnd = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString();
+const pastPaymentFailedAt = new Date(Date.now() - 60 * 60 * 1000).toISOString();
 
 test.describe('signup checkout access', () => {
   test('denies access for active trial without Stripe subscription', () => {
@@ -69,6 +71,33 @@ test.describe('signup checkout access', () => {
         paymentGraceEndsAt: futureGraceEnd,
       }),
     ).toBe(true);
+  });
+
+  test('blocks access immediately when paymentFailedAt is set', () => {
+    expect(
+      hasSubscriptionAccess({
+        plan: 'pro',
+        subscriptionStatus: 'past_due',
+        paymentFailedAt: pastPaymentFailedAt,
+        paymentGraceEndsAt: futureGraceEnd,
+      }),
+    ).toBe(false);
+    expect(
+      hasOutstandingPaymentFailure({
+        plan: 'pro',
+        subscriptionStatus: 'past_due',
+        paymentFailedAt: pastPaymentFailedAt,
+      }),
+    ).toBe(true);
+  });
+
+  test('blocks access for past_due paid subscriptions even without paymentFailedAt flag', () => {
+    expect(
+      hasSubscriptionAccess({
+        plan: 'pro',
+        subscriptionStatus: 'past_due',
+      }),
+    ).toBe(false);
   });
 
   test('formatTrialChargeDate returns en-GB label', () => {

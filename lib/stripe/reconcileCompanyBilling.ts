@@ -4,6 +4,12 @@ import { prisma } from '../prisma';
 import { stripeSubscriptionBillingSnapshot } from './subscriptionBilling';
 
 const API_VERSION = '2024-06-20' as const;
+const GRACE_PERIOD_DAYS = 5;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+function buildGraceEnd(fromDate: Date) {
+  return new Date(fromDate.getTime() + GRACE_PERIOD_DAYS * DAY_MS);
+}
 
 const PAYING_SUB_STATUSES = new Set([
   'active',
@@ -43,7 +49,7 @@ export async function reconcileCompanyBillingFromStripe(companyId: string): Prom
 
   const company = await prisma.company.findUnique({
     where: { id: companyId },
-    select: { stripeCustomerId: true, plan: true },
+    select: { stripeCustomerId: true, plan: true, paymentFailedAt: true, paymentGraceEndsAt: true },
   });
 
   const customerId = company?.stripeCustomerId?.trim();
@@ -88,6 +94,8 @@ export async function reconcileCompanyBillingFromStripe(companyId: string): Prom
   const resolvedPlan = fromMeta ?? fromExisting;
 
   const snap = stripeSubscriptionBillingSnapshot(sub);
+  const now = new Date();
+  const delinquent = dbStatus === 'past_due' || dbStatus === 'unpaid';
 
   const data: Prisma.CompanyUpdateInput = {
     subscriptionStatus: dbStatus,
@@ -101,7 +109,12 @@ export async function reconcileCompanyBillingFromStripe(companyId: string): Prom
           paymentGraceEndsAt: null,
           nonPaymentCanceledAt: null,
         }
-      : {}),
+      : delinquent
+        ? {
+            paymentFailedAt: company?.paymentFailedAt ?? now,
+            paymentGraceEndsAt: company?.paymentGraceEndsAt ?? buildGraceEnd(now),
+          }
+        : {}),
   };
 
   await prisma.company.update({
