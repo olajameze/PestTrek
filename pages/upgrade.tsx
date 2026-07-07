@@ -3,6 +3,14 @@ import { useRouter } from 'next/router';
 import { supabase } from '../lib/supabase';
 import { useToast } from '../components/ui/ToastProvider';
 import { MARKETING_PLAN_FEATURES, PRICING_TRIAL_FOOTNOTE } from '../lib/marketingPlanFeatures';
+import {
+  annualPlanSavingsGbp,
+  formatAnnualEffectiveMonthly,
+  formatGbpPrice,
+  getMarketingPlanPriceGbp,
+  type BillingInterval,
+} from '../lib/marketing/pricing';
+import BillingIntervalToggle from '../components/billing/BillingIntervalToggle';
 import { ownerCanManagePaidPlanInStripe, hasOutstandingPaymentFailure } from '../lib/subscriptionAccess';
 
 type Company = {
@@ -31,6 +39,7 @@ export default function UpgradePage() {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<'pro' | 'business' | 'enterprise' | null>(null);
+  const [billingInterval, setBillingInterval] = useState<BillingInterval>('month');
   const [trialDaysLeft, setTrialDaysLeft] = useState(0);
   const [trialEndsDate, setTrialEndsDate] = useState<Date | null>(null);
 
@@ -122,7 +131,7 @@ export default function UpgradePage() {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${session.access_token}`,
       },
-      body: JSON.stringify({ plan }),
+      body: JSON.stringify({ plan, interval: billingInterval }),
     });
     const data = await res.json();
     if (res.ok && data.url) {
@@ -358,63 +367,79 @@ export default function UpgradePage() {
 
         {/* Pricing Cards */}
         {!paymentBlocked ? (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-          <div className="rounded-2xl border border-blue-100 bg-white p-6 shadow-sm">
-            <h2 className="text-xl font-bold text-navy">🟢 Pro</h2>
-            <p className="mt-2 text-2xl font-bold text-primary-600">£25<span className="text-sm font-medium text-zinc-500">/month</span></p>
-            <p className="mt-2 text-xs font-medium text-zinc-500">Startups & owner-operators scaling beyond a handful of jobs</p>
-            <ul className="mt-4 space-y-2 text-sm text-zinc-600">
-              {MARKETING_PLAN_FEATURES.pro.map((line) => (
-                <li key={line}>• {line}</li>
-              ))}
-            </ul>
-            <button
-              onClick={() => handleSubscribe('pro')}
-              disabled={actionLoading}
-              className="btn btn-primary mt-6 w-full"
-            >
-              {actionLoading && selectedPlan === 'pro' ? 'Redirecting...' : 'Choose Pro'}
-            </button>
-          </div>
-
-          <div className="rounded-2xl border border-blue-200 bg-white p-6 shadow-sm">
-            <h2 className="text-xl font-bold text-navy">🟢 Business</h2>
-            <p className="mt-2 text-2xl font-bold text-primary-600">£50<span className="text-sm font-medium text-zinc-500">/month</span></p>
-            <p className="mt-2 text-xs font-medium text-zinc-500">Growing teams that need revenue and performance visibility</p>
-            <ul className="mt-4 space-y-2 text-sm text-zinc-600">
-              {MARKETING_PLAN_FEATURES.business.map((line) => (
-                <li key={line}>• {line}</li>
-              ))}
-            </ul>
-            <button
-              onClick={() => handleSubscribe('business')}
-              disabled={actionLoading}
-              className="btn btn-primary mt-6 w-full"
-            >
-              {actionLoading && selectedPlan === 'business' ? 'Redirecting...' : 'Choose Business'}
-            </button>
-          </div>
-
-          <div className="rounded-2xl border border-amber-200 bg-white p-6 shadow-sm ring-1 ring-amber-100">
-            <h2 className="text-xl font-bold text-navy">🔵 Enterprise</h2>
-            <p className="mt-2 text-2xl font-bold text-primary-600">£100<span className="text-sm font-medium text-zinc-500">/month</span></p>
-            <p className="mt-1 break-words text-xs text-zinc-500">Requires <code className="rounded bg-zinc-100 px-1">STRIPE_PRICE_ID_ENTERPRISE</code> in environment.</p>
-            <p className="mt-2 text-xs font-medium text-zinc-500">Larger fleets, multi-site, and stricter governance</p>
-            <ul className="mt-4 space-y-2 text-sm text-zinc-600">
-              {MARKETING_PLAN_FEATURES.enterprise.map((line) => (
-                <li key={line}>• {line}</li>
-              ))}
-            </ul>
-            <button
-              type="button"
-              onClick={() => handleSubscribe('enterprise')}
-              disabled={actionLoading}
-              className="btn btn-primary mt-6 w-full"
-            >
-              {actionLoading && selectedPlan === 'enterprise' ? 'Redirecting...' : 'Choose Enterprise'}
-            </button>
-          </div>
+        <>
+        <div className="flex flex-col items-center gap-3">
+          <BillingIntervalToggle value={billingInterval} onChange={setBillingInterval} />
+          {billingInterval === 'year' ? (
+            <p className="text-center text-xs text-zinc-500">Yearly plans are charged once per year in GBP.</p>
+          ) : null}
         </div>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          {(
+            [
+              {
+                key: 'pro' as const,
+                title: '🟢 Pro',
+                tagline: 'Startups & owner-operators scaling beyond a handful of jobs',
+                features: MARKETING_PLAN_FEATURES.pro,
+                borderClass: 'border-blue-100',
+              },
+              {
+                key: 'business' as const,
+                title: '🟢 Business',
+                tagline: 'Growing teams that need revenue and performance visibility',
+                features: MARKETING_PLAN_FEATURES.business,
+                borderClass: 'border-blue-200',
+              },
+              {
+                key: 'enterprise' as const,
+                title: '🔵 Enterprise',
+                tagline: 'Larger fleets, multi-site, and stricter governance',
+                features: MARKETING_PLAN_FEATURES.enterprise,
+                borderClass: 'border-amber-200 ring-1 ring-amber-100',
+              },
+            ] as const
+          ).map((tier) => {
+            const amount = getMarketingPlanPriceGbp(tier.key, billingInterval);
+            const savings = billingInterval === 'year' ? annualPlanSavingsGbp(tier.key) : 0;
+            return (
+              <div key={tier.key} className={`rounded-2xl border bg-white p-6 shadow-sm ${tier.borderClass}`}>
+                <h2 className="text-xl font-bold text-navy">{tier.title}</h2>
+                <p className="mt-2 text-2xl font-bold text-primary-600">
+                  {formatGbpPrice(amount)}
+                  <span className="text-sm font-medium text-zinc-500">
+                    {billingInterval === 'year' ? '/year' : '/month'}
+                  </span>
+                </p>
+                {billingInterval === 'year' ? (
+                  <p className="mt-1 text-xs font-medium text-zinc-500">
+                    {formatAnnualEffectiveMonthly(tier.key)} billed annually
+                  </p>
+                ) : null}
+                {billingInterval === 'year' && savings > 0 ? (
+                  <p className="mt-1 text-xs font-semibold text-emerald-700">
+                    Save {formatGbpPrice(savings)} vs monthly
+                  </p>
+                ) : null}
+                <p className="mt-2 text-xs font-medium text-zinc-500">{tier.tagline}</p>
+                <ul className="mt-4 space-y-2 text-sm text-zinc-600">
+                  {tier.features.map((line) => (
+                    <li key={line}>• {line}</li>
+                  ))}
+                </ul>
+                <button
+                  type="button"
+                  onClick={() => handleSubscribe(tier.key)}
+                  disabled={actionLoading}
+                  className="btn btn-primary mt-6 w-full"
+                >
+                  {actionLoading && selectedPlan === tier.key ? 'Redirecting...' : `Choose ${tier.key.charAt(0).toUpperCase()}${tier.key.slice(1)}`}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+        </>
         ) : null}
 
         {!paymentBlocked ? (

@@ -8,6 +8,13 @@ import { technicianEmailWhere } from '../../lib/auth/technicianGate';
 import { resolveSiteOriginForApiRequest } from '../../lib/siteOrigin';
 import { reconcileCompanyBillingFromStripe } from '../../lib/stripe/reconcileCompanyBilling';
 import { resolveCheckoutTrialAlignment } from '../../lib/stripe/checkoutTrial';
+import {
+  isConfiguredStripePriceId,
+  parseBillingInterval,
+  resolveStripePriceId,
+  type BillingInterval,
+  type StripePlan,
+} from '../../lib/stripe/planPriceIds';
 import { sendSubscriptionUpgradeEmail } from './subscription';
 
 function getStripe() {
@@ -28,8 +35,6 @@ function getStripe() {
   return new Stripe(key, { apiVersion: '2024-06-20' });
 }
 
-type Plan = 'pro' | 'business' | 'enterprise';
-
 /** Duck-type Stripe SDK error for safe JSON + logging without importing internal classes. */
 function extractStripeFields(error: unknown): { code?: string; param?: string; message?: string } {
   if (typeof error !== 'object' || error === null) return {};
@@ -47,13 +52,12 @@ function stripeApiMode(secretKey?: string): 'live' | 'test' | 'unknown' {
   return 'unknown';
 }
 
-const PRICE_IDS: Record<Plan, string> = {
-  pro: process.env.STRIPE_PRICE_ID_PRO || '',
-  business: process.env.STRIPE_PRICE_ID_BUSINESS || '',
-  enterprise: process.env.STRIPE_PRICE_ID_ENTERPRISE || '',
-};
-
 const PAYING_SUB_STATUSES = new Set(['active', 'trialing', 'past_due', 'unpaid']);
+
+function priceConfigLabel(plan: StripePlan, interval: BillingInterval): string {
+  const suffix = interval === 'year' ? '_ANNUAL' : '';
+  return `STRIPE_PRICE_ID_${plan.toUpperCase()}${suffix}`;
+}
 
 function payingSubscriptions(subs: Stripe.Subscription[]): Stripe.Subscription[] {
   return subs.filter((s) => PAYING_SUB_STATUSES.has(s.status)).sort((a, b) => b.created - a.created);
@@ -93,16 +97,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const authEmail = normalizeAuthEmail(user.email);
 
-    const { plan, context } = req.body as { plan?: Plan; context?: 'signup' };
-    if (!plan || !(plan in PRICE_IDS)) {
+    const { plan, context, interval: intervalRaw } = req.body as {
+      plan?: StripePlan;
+      context?: 'signup';
+      interval?: BillingInterval;
+    };
+    const validPlans: StripePlan[] = ['pro', 'business', 'enterprise'];
+    if (!plan || !validPlans.includes(plan)) {
       return res.status(400).json({ error: 'Invalid plan. Use "pro", "business" or "enterprise".' });
     }
 
-    const selectedPlan = plan as Plan;
-    const priceId = PRICE_IDS[selectedPlan];
-    if (!priceId || !priceId.startsWith('price_')) {
+    const selectedPlan = plan;
+    const billingInterval = parseBillingInterval(intervalRaw);
+    const priceId = resolveStripePriceId(selectedPlan, billingInterval);
+    if (!isConfiguredStripePriceId(priceId)) {
       return res.status(500).json({
-        error: `Stripe price id not configured for ${selectedPlan}. Ensure it starts with 'price_' in your environment variables.`,
+        error: `Stripe price id not configured for ${selectedPlan} (${billingInterval}). Set ${priceConfigLabel(selectedPlan, billingInterval)} in your environment variables.`,
       });
     }
 
@@ -169,10 +179,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
       if (pricePreview.type !== 'recurring') {
         return res.status(500).json({
-          error: `Checkout expects a recurring subscription price. Price ${priceId} is type "${pricePreview.type}". Create a recurring monthly price in Stripe.`,
+          error: `Checkout expects a recurring subscription price. Price ${priceId} is type "${pricePreview.type}". Create a recurring price in Stripe.`,
           code: 'STRIPE_PRICE_NOT_RECURRING',
           stripePriceId: priceId,
           plan: selectedPlan,
+        });
+      }
+      const stripeInterval = pricePreview.recurring?.interval;
+      const expectedInterval = billingInterval === 'year' ? 'year' : 'month';
+      if (stripeInterval !== expectedInterval) {
+        return res.status(500).json({
+          error: `Stripe price ${priceId} bills ${stripeInterval ?? 'unknown'} but checkout requested ${billingInterval}. Use a matching ${expectedInterval}ly price ID in ${priceConfigLabel(selectedPlan, billingInterval)}.`,
+          code: 'STRIPE_PRICE_INTERVAL_MISMATCH',
+          stripePriceId: priceId,
+          plan: selectedPlan,
+          billingInterval,
         });
       }
       const priceTrialDays = pricePreview.recurring?.trial_period_days;
@@ -257,6 +278,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         metadata: {
           companyId: company.id,
           plan: selectedPlan,
+          billingInterval,
         },
         items: [
           {
@@ -285,6 +307,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       metadata: {
         companyId: company.id,
         plan: selectedPlan,
+        billingInterval,
       },
       ...(trialAlignment.trialEndUnix != null ? { trial_end: trialAlignment.trialEndUnix } : {}),
     };
@@ -294,6 +317,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       metadata: {
         companyId: company.id,
         plan: selectedPlan,
+        billingInterval,
       },
       line_items: [
         {

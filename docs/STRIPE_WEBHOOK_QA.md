@@ -12,13 +12,14 @@ Use this checklist to confirm upgrades update `Company.plan` and unlock gated AP
 1. `.env.local` with valid **test** keys:
    - `STRIPE_SECRET_KEY` (`sk_test_…`)
    - `STRIPE_WEBHOOK_SECRET` (`whsec_…` from Stripe CLI or Dashboard webhook)
-   - `STRIPE_PRICE_ID_PRO`, `STRIPE_PRICE_ID_BUSINESS`, `STRIPE_PRICE_ID_ENTERPRISE` (each `price_…`)
+   - `STRIPE_PRICE_ID_PRO`, `STRIPE_PRICE_ID_BUSINESS`, `STRIPE_PRICE_ID_ENTERPRISE` (monthly `price_…`)
+   - `STRIPE_PRICE_ID_PRO_ANNUAL`, `STRIPE_PRICE_ID_BUSINESS_ANNUAL`, `STRIPE_PRICE_ID_ENTERPRISE_ANNUAL` (yearly `price_…`)
    - `DATABASE_URL`, `DIRECT_URL`, Supabase vars (see [`.env.example`](../.env.example))
 2. Local app: `npm run dev` (default `http://localhost:3000`).
 
 ## Stripe Dashboard checklist (before live)
 
-1. **Products → each plan price** must be **recurring monthly** with **no trial days** on the Price itself (trial is set at Checkout via `subscription_data.trial_end` from `Company.trialEndsAt`). A price-level trial stacks incorrectly with the app trial.
+1. **Products → each plan price** must be **recurring** (`month` or `year`) with **no trial days** on the Price itself (trial is set at Checkout via `subscription_data.trial_end` from `Company.trialEndsAt`). A price-level trial stacks incorrectly with the app trial. Checkout sends `{ plan, interval: "month" | "year" }` and validates the Stripe price interval matches.
 2. **Webhooks** endpoint must deliver at least:
    - `checkout.session.completed`
    - `customer.subscription.created`

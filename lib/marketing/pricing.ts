@@ -5,7 +5,20 @@ export const MARKETING_PLAN_PRICES_GBP = {
   enterprise: 100,
 } as const;
 
+export const MARKETING_PLAN_ANNUAL_PRICES_GBP = {
+  pro: 150,
+  business: 350,
+  enterprise: 600,
+} as const;
+
 export type MarketingPlanKey = keyof typeof MARKETING_PLAN_PRICES_GBP;
+export type BillingInterval = 'month' | 'year';
+
+const PLAN_ORDER: MarketingPlanKey[] = ['pro', 'business', 'enterprise'];
+
+export function marketingPlanKeys(): MarketingPlanKey[] {
+  return [...PLAN_ORDER];
+}
 
 const gbpFormatter = new Intl.NumberFormat('en-GB', {
   style: 'currency',
@@ -19,6 +32,28 @@ export function formatGbpPrice(amount: number): string {
 
 export function formatGbpMonthly(amount: number): string {
   return `${formatGbpPrice(amount)}/month`;
+}
+
+export function formatGbpYearly(amount: number): string {
+  return `${formatGbpPrice(amount)}/year`;
+}
+
+export function getMarketingPlanPriceGbp(plan: MarketingPlanKey, interval: BillingInterval): number {
+  return interval === 'year' ? MARKETING_PLAN_ANNUAL_PRICES_GBP[plan] : MARKETING_PLAN_PRICES_GBP[plan];
+}
+
+export function annualPlanSavingsGbp(plan: MarketingPlanKey): number {
+  return MARKETING_PLAN_PRICES_GBP[plan] * 12 - MARKETING_PLAN_ANNUAL_PRICES_GBP[plan];
+}
+
+export function annualEffectiveMonthlyGbp(plan: MarketingPlanKey): number {
+  return MARKETING_PLAN_ANNUAL_PRICES_GBP[plan] / 12;
+}
+
+export function formatAnnualEffectiveMonthly(plan: MarketingPlanKey): string {
+  const amount = annualEffectiveMonthlyGbp(plan);
+  const rounded = Number.isInteger(amount) ? amount : Math.round(amount * 100) / 100;
+  return formatGbpMonthly(rounded);
 }
 
 export const MARKETING_STARTING_PRICE_LABEL = formatGbpMonthly(MARKETING_PLAN_PRICES_GBP.pro);

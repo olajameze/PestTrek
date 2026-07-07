@@ -1,4 +1,5 @@
 import { MARKETING_PLAN_FEATURES } from '../../lib/marketingPlanFeatures';
+import { MARKETING_PLAN_PRICES_GBP } from '../../lib/marketing/pricing';
 import { MARKETING_STARTING_PRICE_LABEL } from '../../lib/marketing/pricing';
 
 export const heroCopy = {
@@ -119,7 +120,7 @@ export const pricingPlans = [
   {
     name: '🟢 Pro',
     bestFor: 'Startups & owner-operators scaling beyond a handful of jobs',
-    price: '25',
+    price: String(MARKETING_PLAN_PRICES_GBP.pro),
     cadence: '/month',
     features: [...MARKETING_PLAN_FEATURES.pro],
     cta: 'Start Free Trial',
@@ -129,7 +130,7 @@ export const pricingPlans = [
   {
     name: '🟢 Business',
     bestFor: 'Growing teams that need revenue and performance visibility',
-    price: '50',
+    price: String(MARKETING_PLAN_PRICES_GBP.business),
     cadence: '/month',
     features: [...MARKETING_PLAN_FEATURES.business],
     cta: 'Start Free Trial',
@@ -139,7 +140,7 @@ export const pricingPlans = [
   {
     name: '🔵 Enterprise',
     bestFor: 'Larger fleets, multi-site, and stricter governance',
-    price: '100',
+    price: String(MARKETING_PLAN_PRICES_GBP.enterprise),
     cadence: '/month',
     features: [...MARKETING_PLAN_FEATURES.enterprise],
     cta: 'Start Free Trial',
