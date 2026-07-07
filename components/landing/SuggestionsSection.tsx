@@ -58,8 +58,8 @@ export default function SuggestionsSection() {
       className="border-y border-slate-200 bg-white px-6 py-24"
     >
       <div className="mx-auto max-w-2xl">
-        <h2 className="text-center text-3xl font-extrabold text-slate-900 sm:text-4xl">
-          Help us improve PestTrace – suggest a compliance feature
+        <h2 className="text-center text-3xl font-bold text-slate-900 sm:text-4xl">
+          Got an idea for a compliance feature?
         </h2>
         <p className="mt-4 text-center text-lg text-slate-600">
           Tell us what would make audits and field paperwork easier. No account required.
@@ -70,7 +70,7 @@ export default function SuggestionsSection() {
             data-testid="suggestions-thank-you"
             className="mt-10 rounded-2xl border border-emerald-200 bg-emerald-50 p-6 text-center text-emerald-950"
           >
-            <p className="font-semibold">Thank you — we read every suggestion.</p>
+            <p className="font-semibold">Thank you. We read every suggestion.</p>
             <p className="mt-2 text-sm text-emerald-900">
               If you shared an email, we may follow up about roadmap fit (never for spam).
             </p>
@@ -150,7 +150,7 @@ export default function SuggestionsSection() {
                 {submitting ? 'Sending…' : 'Submit suggestion'}
               </Button>
               <p className="text-sm text-slate-500">
-                We read every message — optional email only if you want a reply about roadmap fit.
+                Optional email only if you want a reply about roadmap fit.
               </p>
             </div>
           </form>

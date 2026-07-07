@@ -2,27 +2,26 @@ import { MARKETING_PLAN_FEATURES } from '../../lib/marketingPlanFeatures';
 import { MARKETING_STARTING_PRICE_LABEL } from '../../lib/marketing/pricing';
 
 export const heroCopy = {
-  title: 'Stop scrambling for audit records. Prove every job in minutes.',
+  title: 'The job is finished. Your records should be too.',
   subtitle:
-    'PestTrace is the digital compliance logbook for pest control businesses. Technicians log jobs on site, owners track certifications and gaps, and you export audit-ready reports — without the paperwork backlog.',
+    'PestTrace is a compliance logbook built for pest control. Technicians log on site, you see everything in one place, and when someone asks for proof you pull a report instead of rebuilding a folder from photos.',
   priceHint: `Plans from ${MARKETING_STARTING_PRICE_LABEL}`,
-  primaryCta: 'Start Free Trial',
-  secondaryCta: 'See How It Works',
+  primaryCta: 'Try it free for 7 days',
+  secondaryCta: 'See the product',
 };
 
 export const bottomCtaCopy = {
-  title: 'Be audit-ready before the inspector calls.',
+  title: 'Ready when the inspector calls.',
   subtitle:
-    'Replace paper logbooks and scattered spreadsheets with one record system your technicians will actually use in the field.',
-  primaryCta: 'Start Free Trial',
-  secondaryCta: 'Contact sales',
+    'Swap the paper logbook and the spreadsheet tabs for one system your team will actually use in the van.',
+  primaryCta: 'Start your free trial',
+  secondaryCta: 'Talk to us',
 };
 
-/** Three product stories — each visual once (no duplicate mockups). */
 export const featureCards = [
   {
     title: 'Log jobs and proof in the field',
-    body: 'Capture treatments, photos, e-signatures, follow-ups, and site notes from any device. Technicians use a streamlined flow; owners see the same record instantly.',
+    body: 'Treatments, photos, signatures, follow ups, site notes. Technicians get a simple flow on any phone. You see the same record the moment it is saved.',
     visual: 'mobile-app-ui',
     screenshots: [
       {
@@ -33,12 +32,12 @@ export const featureCards = [
   },
   {
     title: 'Certificates, reports, and audit evidence',
-    body: 'Track qualification expiry alongside job history. Filter and export professional reports so you can answer clients or regulators without rebuilding folders.',
+    body: 'Track qualification expiry next to job history. Filter what you need and export reports for clients or regulators without digging through folders.',
     visual: 'report-preview',
   },
   {
-    title: 'One dashboard for operations — and growth on higher tiers',
-    body: 'Schedule, compliance gaps, chemical usage, and alerts in one place. Business and Enterprise add customer and retention analytics so you see revenue trends, not only job counts.',
+    title: 'One dashboard for the day to day',
+    body: 'Scheduling, compliance gaps, chemical usage, and alerts in one view. Business and Enterprise add customer and retention analytics when you want revenue trends, not just job counts.',
     visual: 'dashboard-view',
     screenshots: [
       {
@@ -55,20 +54,19 @@ export const featureCards = [
 
 export const howItWorksSteps = [
   {
-    title: 'Onboard owners and technicians',
-    text: 'Business admins set up the company dashboard; field staff get secure email-code sign-in and guided help on their first logbook visit.',
+    title: 'Set up the company',
+    text: 'Owners configure the dashboard. Field staff sign in with a secure email code and get guided help on their first logbook visit.',
   },
   {
-    title: 'Log jobs on-site',
-    text: 'Technicians capture treatments, photos, signatures, and follow-ups from any phone — online or offline.',
+    title: 'Log on site',
+    text: 'Technicians capture treatments, photos, signatures, and follow ups from any phone, online or offline.',
   },
   {
-    title: 'Stay audit-ready',
+    title: 'Pull proof when you need it',
     text: 'Export professional reports and certification records for clients and regulators, including Rodenticide Stewardship evidence.',
   },
 ];
 
-/** Shown on the landing page — product benefits (not a dev changelog). */
 export const teamRoleHighlights = [
   {
     role: 'Business admin',
@@ -76,7 +74,7 @@ export const teamRoleHighlights = [
     points: [
       'Full dashboard: technicians, billing, compliance settings, and PDF/CSV exports',
       'Invite technicians and see every job in one place',
-      'Email + password sign-in built for account security',
+      'Email and password sign in for account security',
     ],
     cta: { label: 'Start as business admin', href: '/auth/signup' },
   },
@@ -85,8 +83,8 @@ export const teamRoleHighlights = [
     audience: 'Field operatives',
     points: [
       'Mobile logbook with photos, e-signatures, and room-level notes',
-      'Secure one-time email code — no shared company password on site',
-      'Step-by-step guidance when starting your first digital job record',
+      'One time email code sign in, no shared company password on site',
+      'Step by step guidance on your first digital job record',
     ],
     cta: { label: 'Technician sign-in', href: '/auth/signin?role=technician' },
   },
@@ -96,22 +94,22 @@ export const icpSegments = [
   {
     title: 'Solo operators & owner-operators',
     pains: [
-      'Paper logbooks that go missing before an audit',
-      'Hours rebuilding records from photos and notes',
-      'Certification expiry caught too late',
+      'Paper logbooks that vanish before an audit',
+      'Evenings spent rebuilding records from photos and notes',
+      'Certification expiry noticed too late',
     ],
-    fits: 'Pro — fast field logging, compliance exports, and minimal admin overhead.',
+    fits: 'Pro covers fast field logging, compliance exports, and light admin.',
     planHint: 'Pro plan',
     cta: { label: 'Start as a solo operator', href: '/auth/signup' },
   },
   {
     title: 'Growing teams & multi-site businesses',
     pains: [
-      'No visibility into what technicians logged today',
-      'Scheduling gaps and missed follow-ups',
-      'Revenue and performance data stuck in spreadsheets',
+      'No clear picture of what technicians logged today',
+      'Scheduling gaps and missed follow ups',
+      'Revenue data stuck in spreadsheets',
     ],
-    fits: 'Business & Enterprise — scheduling, customer management, analytics, and audit packs.',
+    fits: 'Business and Enterprise add scheduling, customer management, analytics, and audit packs.',
     planHint: 'Business & Enterprise',
     cta: { label: 'Scale your team', href: '/auth/signup' },
   },
@@ -150,24 +148,23 @@ export const pricingPlans = [
   },
 ];
 
-/** Shown under hero CTA — avoid repeating the same line again in the hero paragraph. */
 export const trustMicrocopy = [
-  '7-day free trial',
-  'Cancel from the app — no long-term contract',
+  '7 day free trial',
+  'Cancel from the app, no lock in',
   'Built for UK pest control compliance',
 ];
 
 export const regulationUrgency = {
-  title: 'Compliance expectations are rising — paper records are a liability',
-  body: 'Rodenticide stewardship, client tenders, and regulatory audits all demand verifiable job history, treatment details, and technician proof.\n\nMissing records cost you time, credibility, and contracts.\n\nPestTrace keeps every job, certificate, and export in one place — so you are ready when an audit lands, not scrambling the night before.',
+  title: 'Paper records are getting harder to defend',
+  body: 'Rodenticide stewardship, client tenders, and regulatory audits all want the same thing: verifiable job history, treatment details, and technician proof.\n\nWhen records are missing, you lose time, credibility, and sometimes the contract itself.\n\nPestTrace keeps every job, certificate, and export together so you are ready when an audit lands, not rebuilding folders the night before.',
 };
 
 export const testimonials = [
   {
     quote:
-      "PestTrace helped us move from paper logs to fully digital, audit-ready records in under a week. It's saved us hours of admin and made our business far more professional to clients.",
+      'We moved from paper logs to digital records in under a week. It saved us hours of admin and our clients notice the difference.',
     author: "Weathers' Pest Solutions",
-    role: 'Customer Testimonial',
+    role: 'Pest control operator',
     company: "Weathers' Pest Solutions",
     logo: '/weathers-logo.png',
   },
@@ -177,17 +174,17 @@ export const landingFaqs = [
   {
     question: 'What is PestTrace pest control compliance software?',
     answer:
-      'PestTrace is a web-based compliance logbook for pest control companies in the UK and internationally. Owners manage teams and exports from a business dashboard; technicians record jobs, photos, and signatures in the field.',
+      'PestTrace is a web based compliance logbook for pest control companies in the UK and internationally. Owners manage teams and exports from a business dashboard; technicians record jobs, photos, and signatures in the field.',
   },
   {
     question: 'How do business admins and technicians sign in differently?',
     answer:
-      'Business admins use email and password for the full company dashboard. Technicians invited by their company sign in with a one-time code sent to their email — safer for field staff and no shared passwords.',
+      'Business admins use email and password for the full company dashboard. Technicians invited by their company sign in with a one time code sent to their email. Safer for field staff, and no shared passwords.',
   },
   {
     question: 'Does PestTrace help with Rodenticide Stewardship and audits?',
     answer:
-      'Yes. You can maintain structured job history, treatment details, follow-ups, and export reports suitable for client proof and regulatory audits, including stewardship-style record keeping.',
+      'Yes. You can maintain structured job history, treatment details, follow ups, and export reports suitable for client proof and regulatory audits, including stewardship style record keeping.',
   },
   {
     question: 'What happens after my 7-day free trial?',
@@ -195,7 +192,7 @@ export const landingFaqs = [
   },
   {
     question: 'Can I cancel anytime?',
-    answer: 'Yes. Cancel from your billing settings in the app. There are no long-term contracts.',
+    answer: 'Yes. Cancel from your billing settings in the app. There are no long term contracts.',
   },
   {
     question: 'Do technicians need to install an app?',

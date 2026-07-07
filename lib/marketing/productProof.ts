@@ -13,7 +13,7 @@ export const productProofPanels: ProductProofPanel[] = [
   {
     title: 'Field logbook',
     caption:
-      'Technicians capture treatments, photos, and signatures on site — every job logged before they leave the property.',
+      'Technicians capture treatments, photos, and signatures on site. Every job logged before they leave the property.',
     visual: 'mobile-app-ui',
     videoSrc: '/marketing/pesttrace-features.mp4',
     imageAlt: 'PestTrace field logbook demo video',
@@ -21,15 +21,15 @@ export const productProofPanels: ProductProofPanel[] = [
   {
     title: 'Owner dashboard',
     caption:
-      'See compliance gaps, chemical usage, and team activity in one place — no chasing technicians for missing records.',
+      'Compliance gaps, chemical usage, and team activity in one place. No chasing technicians for missing records.',
     visual: 'dashboard-view',
     imageSrc: '/marketing/technician-management.png',
     imageAlt: 'PestTrace technician management and team dashboard',
   },
   {
-    title: 'Audit-ready reports',
+    title: 'Audit ready reports',
     caption:
-      'Export professional PDF reports with photo evidence and signatures — ready for client proof or regulatory audits.',
+      'Export PDF reports with photo evidence and signatures, ready for client proof or regulatory audits.',
     visual: 'report-preview',
     imageSrc: '/marketing/treatment-logbook.png',
     imageAlt: 'PestTrace treatment logbook with PDF export for compliance records',

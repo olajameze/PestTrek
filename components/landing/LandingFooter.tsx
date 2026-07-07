@@ -10,7 +10,7 @@ export default function LandingFooter() {
         <div className="sm:col-span-4">
           <p className="text-lg font-semibold text-white">Pest Trace</p>
           <p className="mt-3 max-w-sm text-sm leading-6 text-slate-400">
-            A modern pest control compliance platform for technicians and teams.
+            Compliance logbook software for pest control teams who are done with paper folders.
           </p>
           <div className="mt-4 flex items-center gap-4">
             <a
@@ -109,7 +109,7 @@ export default function LandingFooter() {
 
       <div className="mx-auto mt-8 flex w-full max-w-6xl flex-col gap-3 border-t border-slate-800 px-4 pt-8 text-xs text-slate-500 sm:px-6 sm:flex-row sm:items-center sm:justify-between">
         <p>© {currentYear} Pest Trace. All rights reserved.</p>
-        <p>Compliance reporting designed for pest control teams.</p>
+        <p>Built for pest control, not generic field service.</p>
       </div>
     </footer>
   );
