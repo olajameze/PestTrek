@@ -26,8 +26,20 @@ const gbpFormatter = new Intl.NumberFormat('en-GB', {
   maximumFractionDigits: 0,
 });
 
+/** Whole-pound display (monthly list prices, savings, etc.). */
 export function formatGbpPrice(amount: number): string {
   return gbpFormatter.format(amount);
+}
+
+function formatGbpPriceWithPence(amount: number): string {
+  const rounded = Math.round(amount * 100) / 100;
+  const hasFraction = !Number.isInteger(rounded);
+  return new Intl.NumberFormat('en-GB', {
+    style: 'currency',
+    currency: 'GBP',
+    minimumFractionDigits: hasFraction ? 2 : 0,
+    maximumFractionDigits: 2,
+  }).format(rounded);
 }
 
 export function formatGbpMonthly(amount: number): string {
@@ -51,9 +63,7 @@ export function annualEffectiveMonthlyGbp(plan: MarketingPlanKey): number {
 }
 
 export function formatAnnualEffectiveMonthly(plan: MarketingPlanKey): string {
-  const amount = annualEffectiveMonthlyGbp(plan);
-  const rounded = Number.isInteger(amount) ? amount : Math.round(amount * 100) / 100;
-  return formatGbpMonthly(rounded);
+  return `${formatGbpPriceWithPence(annualEffectiveMonthlyGbp(plan))}/month`;
 }
 
 export const MARKETING_STARTING_PRICE_LABEL = formatGbpMonthly(MARKETING_PLAN_PRICES_GBP.pro);
