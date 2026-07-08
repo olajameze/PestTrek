@@ -22,8 +22,8 @@ export default function LandingNav() {
 
   return (
     <nav className="sticky top-0 z-50 border-b border-slate-100 bg-white/95 backdrop-blur-md">
-      <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-6 sm:py-5">
-        <Link href="/" className="flex items-center gap-2">
+      <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-4 sm:px-6 sm:py-5">
+        <Link href="/" className="flex shrink-0 items-center gap-2">
           <Image
             src="/pest-trace.png"
             alt="PestTrace Logo"
@@ -37,12 +37,12 @@ export default function LandingNav() {
           </span>
         </Link>
 
-        <div className="hidden items-center gap-6 lg:flex xl:gap-8">
+        <div className="hidden min-w-0 flex-1 items-center justify-center gap-4 lg:flex xl:gap-6">
           {NAV_LINKS.map((link) => (
             <Link
               key={link.href}
               href={link.href}
-              className={`text-sm font-medium transition ${
+              className={`whitespace-nowrap text-sm font-medium transition ${
                 isActive(link.href) ? 'text-emerald-600' : 'text-slate-500 hover:text-slate-900'
               }`}
             >
@@ -51,7 +51,7 @@ export default function LandingNav() {
           ))}
         </div>
 
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex shrink-0 items-center gap-2 lg:ml-0">
           <button
             type="button"
             className="rounded-xl bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-900 lg:hidden"
