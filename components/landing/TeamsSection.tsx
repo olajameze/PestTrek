@@ -10,7 +10,7 @@ export default function TeamsSection() {
           <div className="mb-14 text-center">
             <h1 className="mb-4 text-4xl font-extrabold sm:text-5xl">Built for owners and field teams</h1>
             <p className="mx-auto max-w-2xl text-lg text-slate-500">
-              One platform with the right access for each role — secure sign-in, guided technician onboarding, and a
+              One platform with the right access for each role: secure sign in, guided technician onboarding, and a
               single source of truth for compliance.
             </p>
           </div>

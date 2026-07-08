@@ -8,7 +8,8 @@ export default function FeaturesSection() {
       <div className="mx-auto max-w-3xl text-center">
         <h1 className="mb-4 text-4xl font-extrabold sm:text-5xl">Everything you need to stay compliant and in control</h1>
         <p className="text-lg text-slate-500">
-          Field logbook, owner dashboard, and audit exports — built around pest control job records, not generic SaaS templates.
+          Field logbook, owner dashboard, and audit exports built around pest control job records, not generic SaaS
+          templates.
         </p>
       </div>
       {featureCards.map((feature, idx) => (
