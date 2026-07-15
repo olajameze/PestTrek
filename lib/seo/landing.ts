@@ -5,17 +5,19 @@ import { MARKETING_STARTING_PRICE_LABEL } from '../marketing/pricing';
 export const MARKETING_SITE_ORIGIN = 'https://www.pesttrace.com';
 
 export const LANDING_PAGE_TITLE =
-  'PestTrace – Pest Control Compliance Software UK | Digital Logbook & Audit Reports';
+  'PestTrace – Pest Control Logbook & Compliance Records | Field Jobs to Audit Exports';
 
 export const LANDING_META_DESCRIPTION =
-  `Digital compliance logbook for UK pest control businesses. Technicians log jobs on site; owners track certifications and export audit-ready reports. 7-day free trial from ${MARKETING_STARTING_PRICE_LABEL}.`;
+  `Pest control logbook for technicians and owners. Record treatments, photos, signatures, and qualifications on site. Export PDF reports and audit packs for client and regulatory requests. 7-day free trial from ${MARKETING_STARTING_PRICE_LABEL}.`;
 
 export const LANDING_KEYWORDS = [
   'pest control compliance software',
-  'pest control logbook UK',
-  'rodenticide stewardship records',
-  'pest control job tracking',
-  'audit ready pest control reports',
+  'pest control logbook',
+  'pest control treatment records',
+  'pest control audit pack',
+  'rodenticide record keeping',
+  'FIFRA application records',
+  'BPCA treatment records',
   'technician pest control app',
   'pest control business software',
 ].join(', ');

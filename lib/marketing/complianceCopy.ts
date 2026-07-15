@@ -18,7 +18,7 @@ export const complianceWorkflow = {
       fields: [
         'Date, client name, address, and postcode',
         'Property type (residential, commercial, agricultural, and other)',
-        'Treatment type — including rodent, insect, bird, and specialist treatments',
+        'Treatment type, including rodent, insect, bird, and specialist treatments',
       ],
     },
     {

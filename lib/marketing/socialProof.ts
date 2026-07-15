@@ -30,6 +30,6 @@ export const marketingStats: MarketingStat[] = [
 export const trustHighlights = [
   '7-day free trial on every plan',
   'No long-term contracts',
-  'Built for UK pest control compliance',
-  'Rodenticide stewardship record keeping',
+  'Works in the browser, no app store',
+  'CRRU, BPCA, FIFRA-style export fields',
 ];

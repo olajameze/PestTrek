@@ -1,5 +1,5 @@
 import Image from 'next/image';
-import { testimonials } from './content';
+import { socialProofHeading, testimonials } from './content';
 import { marketingStats, trustHighlights } from '../../lib/marketing/socialProof';
 import { FadeIn } from './ProductVisual';
 
@@ -25,6 +25,7 @@ export default function SocialProofSection() {
         ) : null}
 
         <FadeIn>
+          <p className="mb-8 text-sm font-semibold text-slate-500">{socialProofHeading}</p>
           <figure className="grid gap-10 lg:grid-cols-[auto_1fr] lg:items-center lg:gap-14">
             <a
               href="https://weatherspestsolutions.co.uk/"

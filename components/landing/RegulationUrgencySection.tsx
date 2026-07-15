@@ -11,7 +11,7 @@ export default function RegulationUrgencySection() {
       <FadeIn>
         <div className="mx-auto grid max-w-6xl gap-10 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] lg:items-start lg:gap-16">
           <div>
-            <p className="text-sm font-semibold text-amber-800">Why this matters now</p>
+            <p className="text-sm font-semibold text-amber-800">{regulationUrgency.eyebrow}</p>
             <h2 className="mt-3 text-3xl font-bold leading-tight text-amber-950 sm:text-4xl">
               {regulationUrgency.title}
             </h2>
